@@ -28,6 +28,4 @@ Route::get('/ready', function () {
     }
 });
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::view('/{any?}', 'app')->where('any', '^(?!api(?:/|$)).*$');
