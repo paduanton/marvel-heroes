@@ -11,6 +11,23 @@
 |
 */
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/health', fn () => response()->json(['status' => 'ok']));
+Route::get('/ready', function () {
+    try {
+        Cache::store()->get('marvel:readiness');
+        if (blank(config('marvel.public_key')) || blank(config('marvel.private_key'))) {
+            return response()->json(['status' => 'not_ready'], 503);
+        }
+
+        return response()->json(['status' => 'ready']);
+    } catch (Throwable) {
+        return response()->json(['status' => 'not_ready'], 503);
+    }
+});
+
 Route::get('/', function () {
     return view('welcome');
 });
