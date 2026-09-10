@@ -1,0 +1,246 @@
+openapi: 3.1.0
+info:
+  title: Marvel Heroes Catalog API
+  version: 1.0.0
+  description: Stable read-only catalog interface for the Marvel Heroes application.
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    servers:
+      - url: /
+    get:
+      summary: Check application liveness
+      responses:
+        '200':
+          description: The application can serve requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+  /ready:
+    servers:
+      - url: /
+    get:
+      summary: Check cache access and credential configuration
+      description: Does not call the upstream Marvel API or validate the credentials with it.
+      responses:
+        '200':
+          description: Cache is accessible and Marvel credentials are configured.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        '503':
+          description: Cache is unavailable or Marvel credentials are missing.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: not_ready }
+  /characters:
+    get:
+      summary: List catalog characters
+      parameters:
+        - $ref: '#/components/parameters/SearchQuery'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: A paginated character collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterCollection'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimitProblem'
+        '502':
+          $ref: '#/components/responses/UpstreamProblem'
+        '503':
+          $ref: '#/components/responses/CatalogUnavailableProblem'
+  /characters/{characterId}:
+    get:
+      summary: Get one character
+      parameters:
+        - $ref: '#/components/parameters/CharacterId'
+      responses:
+        '200':
+          description: A character.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CharacterResource'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '502':
+          $ref: '#/components/responses/UpstreamProblem'
+        '503':
+          $ref: '#/components/responses/CatalogUnavailableProblem'
+  /characters/{characterId}/stories:
+    get:
+      summary: List stories related to a character
+      parameters:
+        - $ref: '#/components/parameters/CharacterId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: A paginated story collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoryCollection'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimitProblem'
+        '502':
+          $ref: '#/components/responses/UpstreamProblem'
+        '503':
+          $ref: '#/components/responses/CatalogUnavailableProblem'
+  /stories/{storyId}/comics:
+    get:
+      summary: List comics related to a story
+      parameters:
+        - $ref: '#/components/parameters/StoryId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200':
+          description: A paginated comic collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComicCollection'
+        '422':
+          $ref: '#/components/responses/ValidationProblem'
+        '429':
+          $ref: '#/components/responses/RateLimitProblem'
+        '502':
+          $ref: '#/components/responses/UpstreamProblem'
+        '503':
+          $ref: '#/components/responses/CatalogUnavailableProblem'
+components:
+  parameters:
+    SearchQuery:
+      name: query
+      in: query
+      schema: { type: string, minLength: 2, maxLength: 100 }
+      description: Case-insensitive character name prefix.
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    CharacterId:
+      name: characterId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    StoryId:
+      name: storyId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+  responses:
+    ValidationProblem:
+      description: Invalid query parameters.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    RateLimitProblem:
+      description: Local rate limit exceeded.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    NotFoundProblem:
+      description: Catalog resource not found.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    UpstreamProblem:
+      description: Marvel API could not be reached and no stale result is available.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    CatalogUnavailableProblem:
+      description: The configured upstream request budget is exhausted or the requested entry is already being refreshed and no stale result is available.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+  schemas:
+    Meta:
+      type: object
+      required: [page, per_page, total]
+      properties:
+        page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+    Character:
+      type: object
+      required: [id, name, description, modified_at, image_url]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        modified_at: { type: [string, 'null'], format: date-time }
+        image_url: { type: [string, 'null'], format: uri }
+    Story:
+      type: object
+      required: [id, title, type, modified_at, counts]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        type: { type: [string, 'null'] }
+        modified_at: { type: [string, 'null'], format: date-time }
+        counts:
+          type: object
+          additionalProperties: { type: integer }
+    Comic:
+      type: object
+      required: [id, title, description, format, modified_at, on_sale_at, digital_price, image_url]
+      properties:
+        id: { type: integer }
+        digital_id: { type: [integer, 'null'] }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        format: { type: [string, 'null'] }
+        modified_at: { type: [string, 'null'], format: date-time }
+        on_sale_at: { type: [string, 'null'], format: date-time }
+        digital_price: { type: [number, 'null'] }
+        image_url: { type: [string, 'null'], format: uri }
+    CharacterResource:
+      type: object
+      required: [data]
+      properties: { data: { $ref: '#/components/schemas/Character' } }
+    CharacterCollection:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Character' } }
+        meta: { $ref: '#/components/schemas/Meta' }
+    StoryCollection:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Story' } }
+        meta: { $ref: '#/components/schemas/Meta' }
+    ComicCollection:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Comic' } }
+        meta: { $ref: '#/components/schemas/Meta' }
+    Problem:
+      type: object
+      required: [type, title, status, code, detail, request_id]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string }
+        detail: { type: string }
+        request_id: { type: [string, 'null'] }
