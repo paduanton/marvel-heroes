@@ -1,6 +1,12 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\API\MarvelController;
+use App\Modules\Characters\Presentation\Controllers\ListCharactersController;
+use App\Modules\Characters\Presentation\Controllers\ListCharacterStoriesController;
+use App\Modules\Characters\Presentation\Controllers\ShowCharacterController;
+use App\Modules\Comics\Presentation\Controllers\ListStoryComicsController;
+use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,13 +19,18 @@ use Illuminate\Http\Request;
 |
 */
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
+Route::prefix('v1')->middleware('throttle:catalog')->group(function () {
+    Route::get('characters', ListCharactersController::class);
+    Route::get('characters/{characterId}', ShowCharacterController::class)->whereNumber('characterId');
+    Route::get('characters/{characterId}/stories', ListCharacterStoriesController::class)->whereNumber('characterId');
+    Route::get('stories/{storyId}/comics', ListStoryComicsController::class)->whereNumber('storyId');
 });
 
-Route::middleware(['cors'])->group(function () {
-    Route::get('character/{name}', 'API\MarvelController@getCharacterId');
-    Route::get('character/id/{id_character}', 'API\MarvelController@getCharacteryById');
-    Route::get('character/stories/{id_character}', 'API\MarvelController@getStoriesByCharacterId');
-    Route::get('character/comics/{id_story}', 'API\MarvelController@getComicsByStoryId');
+Route::middleware('throttle:catalog')->group(function () {
+    Route::get('character/{name}', [MarvelController::class, 'getCharacterId']);
+    Route::get('character/id/{idCharacter}', [MarvelController::class, 'getCharacteryById'])->whereNumber('idCharacter');
+    Route::get('character/stories/{idCharacter}', [MarvelController::class, 'getStoriesByCharacterId'])->whereNumber('idCharacter');
+    Route::get('character/comics/{storyId}', [MarvelController::class, 'getComicsByStoryId'])->whereNumber('storyId');
 });
+
+Route::fallback(fn () => throw new NotFoundHttpException);
