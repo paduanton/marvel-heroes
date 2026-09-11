@@ -56,7 +56,12 @@ final class MarvelHttpClient implements MarvelCatalogGateway
                 ->acceptJson()
                 ->connectTimeout((int) config('marvel.timeout_seconds'))
                 ->timeout((int) config('marvel.timeout_seconds'))
-                ->retry((int) config('marvel.retry_times'), 200, fn ($exception, $request) => $exception instanceof ConnectionException)
+                ->retry(
+                    (int) config('marvel.retry_times'),
+                    200,
+                    fn ($exception, $request) => $exception instanceof ConnectionException,
+                    throw: false,
+                )
                 ->get($path, array_merge($query, $this->signature()));
         } catch (ConnectionException $exception) {
             throw new MarvelUnavailableException('Marvel API connection failed.', previous: $exception);
