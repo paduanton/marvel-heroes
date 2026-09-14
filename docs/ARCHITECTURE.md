@@ -18,6 +18,8 @@ Each normalized request produces a stable Redis key. A fresh entry is served imm
 
 `MarvelRequestBudget` reserves one slot immediately before each HTTP attempt, including connection retries. The reservation uses the shared cache lock and timestamp history over the preceding 24 hours; midnight does not reset it. Failed attempts remain counted conservatively because the provider may have received them. Cache hits and missing credentials do not consume a slot. A retry without budget is stopped before dispatch; the cached gateway can still return a valid stale response or propagate the existing budget-exhausted problem response.
 
+The opt-in Redis integration suite verifies contention through catalog HTTP requests in separate PHP processes: cold contenders receive the existing refresh-in-progress response without calling Marvel, stale contenders receive cached data, timed-out contenders cannot release another process's lock, and distinct concurrent queries share one budget. See [DEVELOPMENT.md](DEVELOPMENT.md#redis-concurrency-validation) for the isolated test setup and its limits.
+
 ## Future split
 
 The Vue client only calls `/api/v1`. Its current TypeScript types are maintained manually against OpenAPI; automated generation is not yet implemented. It can move to a separate deployment later without exposing Marvel credentials or redesigning the Laravel application layer.
@@ -33,4 +35,4 @@ Catalog discovery is public. Sanctum, the `Identity` module and identity persist
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
 - Frontend cancellation can be wrapped as a catalog error, and overlapping requests can affect loading state. One-character searches, route parameter changes, story pagination and isolated related-content errors still need refinement and regression tests.
-- Stale state is not exposed to the UI, and cache concurrency, real upstream behavior and complete browser flows have not been verified by the current unit and feature suites.
+- Stale state is not exposed to the UI. Real upstream behavior, refreshes outliving the lock, Redis outages and complete browser flows remain unverified by the current suites.

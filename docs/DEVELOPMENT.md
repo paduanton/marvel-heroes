@@ -38,6 +38,28 @@ docker compose config --no-env-resolution --quiet
 
 The test key is generated only in the process, never printed, and discarded after execution. Tests use fake upstream responses and an in-memory cache; they do not consume Marvel quota or verify Redis concurrency. Rebuild the image after PHP changes.
 
+### Redis concurrency validation
+
+The separate `tests/Integration` suite runs catalog HTTP requests in independent PHP processes against real Redis. It is intentionally outside the default PHPUnit suites. Run it explicitly after building the `testing` image:
+
+```powershell
+$redisName = 'marvel-heroes-redis-test-' + [guid]::NewGuid().ToString('N')
+docker run --detach --rm --network none --name $redisName redis:7.4-alpine redis-server --save '' --appendonly no
+if ($LASTEXITCODE -ne 0) { throw 'Could not start the isolated Redis container.' }
+try {
+    docker run --rm --network "container:$redisName" --env TEST_REDIS_HOST=127.0.0.1 marvel-heroes-testing php vendor/bin/phpunit tests/Integration
+    if ($LASTEXITCODE -ne 0) { throw 'Redis integration tests failed.' }
+} finally {
+    docker stop $redisName
+}
+```
+
+The containers share an isolated network namespace with no external access or published ports. Redis uses no host volumes and is removed when stopped. Never point `TEST_REDIS_HOST` at a development or production instance: although each test uses a unique prefix and never flushes Redis, test entries remain until this disposable instance is removed. No `.env` mount or real Marvel credentials are needed; only the external HTTP boundary is simulated.
+
+The suite verifies cold-cache contention, ownership-safe lock release, stale responses during refresh, reuse of the refreshed entry, and a shared budget across concurrent queries. Workers coordinate through process input/output, not arbitrary sleeps. The simulated clock advances normally even when shifted forward to age an entry, preserving Laravel's lock timeout behavior. Missing `TEST_REDIS_HOST` skips these tests; a configured but unreachable instance fails them.
+
+These are functional concurrency checks, not a load test. They do not validate refreshes exceeding the fixed 15-second lock lifetime, process crashes, Redis outages, or real Marvel timing and responses.
+
 ## Frontend validation
 
 ```powershell
