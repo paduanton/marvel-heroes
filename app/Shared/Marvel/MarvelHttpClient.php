@@ -2,6 +2,7 @@
 
 namespace App\Shared\Marvel;
 
+use App\Shared\Cache\MarvelRequestBudget;
 use App\Shared\Marvel\Contracts\MarvelCatalogGateway;
 use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
@@ -10,7 +11,10 @@ use Illuminate\Support\Facades\Log;
 
 final class MarvelHttpClient implements MarvelCatalogGateway
 {
-    public function __construct(private readonly MarvelPayloadNormalizer $normalizer) {}
+    public function __construct(
+        private readonly MarvelPayloadNormalizer $normalizer,
+        private readonly MarvelRequestBudget $budget,
+    ) {}
 
     public function characters(string $query, int $offset, int $limit): array
     {
@@ -51,9 +55,12 @@ final class MarvelHttpClient implements MarvelCatalogGateway
     private function collection(string $path, array $query, callable $normalizer): array
     {
         try {
-            Log::debug('marvel.upstream_call', ['path' => $path]);
             $response = Http::baseUrl((string) config('marvel.base_url'))
                 ->acceptJson()
+                ->beforeSending(function () use ($path): void {
+                    $this->budget->reserve();
+                    Log::debug('marvel.upstream_call', ['path' => $path]);
+                })
                 ->connectTimeout((int) config('marvel.timeout_seconds'))
                 ->timeout((int) config('marvel.timeout_seconds'))
                 ->retry(

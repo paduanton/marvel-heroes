@@ -43,11 +43,10 @@ class CachedMarvelCatalogGatewayTest extends TestCase
         self::assertSame($character, $gateway->character(1));
     }
 
-    public function test_it_blocks_a_cache_miss_when_the_budget_is_exhausted(): void
+    public function test_it_propagates_budget_exhaustion_when_no_cached_response_exists(): void
     {
-        config(['marvel.daily_budget' => 0]);
         $upstream = Mockery::mock(MarvelCatalogGateway::class);
-        $upstream->shouldNotReceive('character');
+        $upstream->shouldReceive('character')->once()->with(1)->andThrow(new MarvelBudgetExhaustedException);
         $gateway = new CachedMarvelCatalogGateway($upstream);
 
         $this->expectException(MarvelBudgetExhaustedException::class);
@@ -59,11 +58,11 @@ class CachedMarvelCatalogGatewayTest extends TestCase
         $character = ['id' => 1, 'name' => 'Example Hero'];
         $upstream = Mockery::mock(MarvelCatalogGateway::class);
         $upstream->shouldReceive('character')->once()->with(1)->andReturn($character);
+        $upstream->shouldReceive('character')->once()->with(1)->andThrow(new MarvelBudgetExhaustedException);
         $gateway = new CachedMarvelCatalogGateway($upstream);
 
         self::assertSame($character, $gateway->character(1));
         $this->travel(31)->days();
-        config(['marvel.daily_budget' => 0]);
         self::assertSame($character, $gateway->character(1));
     }
 

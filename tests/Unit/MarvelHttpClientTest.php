@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
 use App\Shared\Marvel\MarvelHttpClient;
-use App\Shared\Marvel\MarvelPayloadNormalizer;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -23,7 +22,7 @@ class MarvelHttpClientTest extends TestCase
             'marvel.retry_times' => 2,
         ]);
         Http::preventStrayRequests();
-        $this->client = new MarvelHttpClient(new MarvelPayloadNormalizer);
+        $this->client = $this->app->make(MarvelHttpClient::class);
     }
 
     public function test_it_returns_null_for_an_upstream_missing_character_without_retrying(): void

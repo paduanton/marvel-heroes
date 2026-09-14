@@ -72,21 +72,14 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
     /** @template T @param array<string, mixed>|null $entry @param callable(): T $resolver @return T */
     private function refresh(string $key, string $resource, ?array $entry, callable $resolver): mixed
     {
-        if (! $this->canCallUpstream()) {
-            if ($this->isStale($entry)) {
-                Log::warning('marvel.cache_stale_budget', ['resource' => $resource]);
-
-                return $entry['value'];
-            }
-
-            throw new MarvelBudgetExhaustedException('The daily Marvel API budget has been exhausted.');
-        }
-
         try {
             $value = $resolver();
         } catch (\Throwable $exception) {
             if ($this->isStale($entry)) {
-                Log::warning('marvel.cache_stale_upstream', ['resource' => $resource, 'exception' => $exception::class]);
+                $event = $exception instanceof MarvelBudgetExhaustedException
+                    ? 'marvel.cache_stale_budget'
+                    : 'marvel.cache_stale_upstream';
+                Log::warning($event, ['resource' => $resource, 'exception' => $exception::class]);
 
                 return $entry['value'];
             }
@@ -99,41 +92,6 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
         Log::info('marvel.cache_refreshed', ['resource' => $resource]);
 
         return $value;
-    }
-
-    private function canCallUpstream(): bool
-    {
-        $key = 'marvel:budget:timestamps';
-        $lock = Cache::lock('marvel:budget:lock', 5);
-        try {
-            $lock->block(2);
-            $now = now()->getTimestamp();
-            $windowStart = $now - 86400;
-            $storedTimestamps = Cache::get($key, []);
-            $timestamps = array_values(array_filter(
-                is_array($storedTimestamps) ? $storedTimestamps : [],
-                static fn (mixed $timestamp): bool => is_int($timestamp) && $timestamp > $windowStart,
-            ));
-
-            if (count($timestamps) >= (int) config('marvel.daily_budget')) {
-                Log::warning('marvel.upstream_budget_exhausted', ['used' => count($timestamps)]);
-
-                return false;
-            }
-
-            $timestamps[] = $now;
-            Cache::put($key, $timestamps, now()->addDay());
-            Log::debug('marvel.upstream_budget_used', [
-                'used' => count($timestamps),
-                'remaining' => max(0, (int) config('marvel.daily_budget') - count($timestamps)),
-            ]);
-
-            return true;
-        } catch (LockTimeoutException) {
-            return false;
-        } finally {
-            optional($lock)->release();
-        }
     }
 
     /** @param array<string, mixed>|mixed $entry */
