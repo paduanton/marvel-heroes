@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 final class MarvelHttpClient implements MarvelCatalogGateway
 {
+    public const RETRY_DELAY_MILLISECONDS = 200;
+
     public function __construct(
         private readonly MarvelPayloadNormalizer $normalizer,
         private readonly MarvelRequestBudget $budget,
@@ -65,7 +67,7 @@ final class MarvelHttpClient implements MarvelCatalogGateway
                 ->timeout((int) config('marvel.timeout_seconds'))
                 ->retry(
                     (int) config('marvel.retry_times'),
-                    200,
+                    self::RETRY_DELAY_MILLISECONDS,
                     fn ($exception, $request) => $exception instanceof ConnectionException,
                     throw: false,
                 )

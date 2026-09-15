@@ -9,13 +9,15 @@ use Illuminate\Support\Facades\Log;
 
 final class MarvelRequestBudget
 {
+    public const LOCK_WAIT_SECONDS = 2;
+
     public function reserve(): void
     {
         $key = 'marvel:budget:timestamps';
         $lock = Cache::lock('marvel:budget:lock', 5);
 
         try {
-            $lock->block(2);
+            $lock->block(self::LOCK_WAIT_SECONDS);
             $now = now()->getTimestamp();
             $windowStart = $now - 86400;
             $storedTimestamps = Cache::get($key, []);

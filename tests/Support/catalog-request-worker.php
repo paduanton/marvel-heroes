@@ -35,8 +35,8 @@ config([
     'marvel.public_key' => 'test-public',
     'marvel.private_key' => 'test-private',
     'marvel.daily_budget' => $options['budget'],
-    'marvel.timeout_seconds' => 5,
-    'marvel.retry_times' => 2,
+    'marvel.timeout_seconds' => $options['timeout'],
+    'marvel.retry_times' => $options['attempts'],
     'marvel.cache.fresh_days' => 30,
     'marvel.cache.stale_days' => 180,
 ]);

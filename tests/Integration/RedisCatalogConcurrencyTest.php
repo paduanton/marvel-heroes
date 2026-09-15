@@ -2,6 +2,7 @@
 
 namespace Tests\Integration;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
@@ -110,6 +111,35 @@ class RedisCatalogConcurrencyTest extends TestCase
         self::assertSame(2, $upstreamCalls);
     }
 
+    #[DataProvider('longRefreshSettings')]
+    public function test_the_refresh_lock_covers_the_configured_request_window(int $timeout, int $attempts): void
+    {
+        [$owner, $input] = $this->startRequest(hold: true, timeout: $timeout, attempts: $attempts);
+        $input->write("start\n");
+        $this->awaitMarker($owner, 'UPSTREAM');
+
+        // Redis uses real time: cross the old 15-second lease, not a simulated clock boundary.
+        sleep(16);
+        [$contender, $contenderInput] = $this->startRequest(timeout: $timeout, attempts: $attempts);
+        $contenderInput->write("start\n");
+        $result = $this->response($contender);
+        self::assertSame(503, $result['status']);
+        self::assertSame('cache-refresh-in-progress', $result['body']['code']);
+        self::assertSame(0, substr_count($contender->getErrorOutput(), 'UPSTREAM'));
+
+        $input->write("release\n");
+        self::assertSame(200, $this->response($owner)['status']);
+        self::assertSame(1, substr_count($owner->getErrorOutput(), 'UPSTREAM'));
+    }
+
+    public static function longRefreshSettings(): array
+    {
+        return [
+            'longer timeout' => [20, 1],
+            'more attempts' => [5, 4],
+        ];
+    }
+
     /** @return array{Process, InputStream} */
     private function startRequest(
         bool $hold = false,
@@ -117,6 +147,8 @@ class RedisCatalogConcurrencyTest extends TestCase
         string $name = 'Example Hero',
         string $path = '/api/v1/characters',
         int $budget = 2400,
+        int $timeout = 5,
+        int $attempts = 2,
     ): array {
         $input = new InputStream;
         $process = new Process([
@@ -129,8 +161,10 @@ class RedisCatalogConcurrencyTest extends TestCase
                 'budget' => $budget,
                 'name' => $name,
                 'hold' => $hold,
+                'timeout' => $timeout,
+                'attempts' => $attempts,
             ], JSON_THROW_ON_ERROR),
-        ], dirname(__DIR__, 2), timeout: 20);
+        ], dirname(__DIR__, 2), timeout: 60);
         $process->setInput($input);
         $this->processes[] = $process;
         $process->start();

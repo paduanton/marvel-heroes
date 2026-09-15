@@ -5,12 +5,15 @@ namespace App\Shared\Cache;
 use App\Shared\Marvel\Contracts\MarvelCatalogGateway;
 use App\Shared\Marvel\Exceptions\MarvelBudgetExhaustedException;
 use App\Shared\Marvel\Exceptions\MarvelRefreshInProgressException;
+use App\Shared\Marvel\MarvelHttpClient;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
 {
+    private const REFRESH_OVERHEAD_SECONDS = 5;
+
     public function __construct(private readonly MarvelCatalogGateway $upstream) {}
 
     public function characters(string $query, int $offset, int $limit): array
@@ -47,7 +50,7 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
 
         Log::debug('marvel.cache_miss', ['resource' => $resource]);
 
-        $lock = Cache::lock("{$key}:lock", 15);
+        $lock = Cache::lock("{$key}:lock", $this->refreshLockSeconds());
         try {
             $lock->block(2);
             $entry = Cache::get($key);
@@ -67,6 +70,18 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
         } finally {
             optional($lock)->release();
         }
+    }
+
+    private function refreshLockSeconds(): int
+    {
+        $attempts = max(1, (int) config('marvel.retry_times'));
+        $timeout = (int) config('marvel.timeout_seconds');
+        $retryDelay = ($attempts - 1) * MarvelHttpClient::RETRY_DELAY_MILLISECONDS / 1000;
+
+        // Budget reservation precedes every HTTP attempt; allow time to normalize and cache the result.
+        $requestWindow = $attempts * ($timeout + MarvelRequestBudget::LOCK_WAIT_SECONDS) + $retryDelay;
+
+        return max(15, (int) ceil($requestWindow) + self::REFRESH_OVERHEAD_SECONDS);
     }
 
     /** @template T @param array<string, mixed>|null $entry @param callable(): T $resolver @return T */
