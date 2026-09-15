@@ -70,12 +70,17 @@ final class MarvelPayloadNormalizer
         return $value;
     }
 
-    /** @param array<string, mixed> $thumbnail */
-    private function imageUrl(array $thumbnail): ?string
+    private function imageUrl(mixed $thumbnail): ?string
     {
+        if (! is_array($thumbnail)) {
+            return null;
+        }
+
         $path = $thumbnail['path'] ?? null;
         $extension = $thumbnail['extension'] ?? null;
-        if (! is_string($path) || ! is_string($extension) || str_contains($path, 'image_not_available')) {
+        if (! is_string($path) || ! is_string($extension)
+            || trim($path) === '' || trim($extension) === ''
+            || str_contains($path, 'image_not_available')) {
             return null;
         }
 
@@ -85,8 +90,13 @@ final class MarvelPayloadNormalizer
     /** @param array<string, mixed> $item */
     private function dateByType(array $item, string $type): ?string
     {
-        foreach (($item['dates'] ?? []) as $date) {
-            if (($date['type'] ?? null) === $type) {
+        $dates = $item['dates'] ?? [];
+        if (! is_array($dates)) {
+            return null;
+        }
+
+        foreach ($dates as $date) {
+            if (is_array($date) && ($date['type'] ?? null) === $type) {
                 return $this->nullableString($date['date'] ?? null);
             }
         }
@@ -97,9 +107,17 @@ final class MarvelPayloadNormalizer
     /** @param array<string, mixed> $item */
     private function priceByType(array $item, string $type): ?float
     {
-        foreach (($item['prices'] ?? []) as $price) {
-            if (($price['type'] ?? null) === $type && is_numeric($price['price'] ?? null)) {
-                return (float) $price['price'];
+        $prices = $item['prices'] ?? [];
+        if (! is_array($prices)) {
+            return null;
+        }
+
+        foreach ($prices as $price) {
+            if (is_array($price) && ($price['type'] ?? null) === $type && is_numeric($price['price'] ?? null)) {
+                $amount = (float) $price['price'];
+                if (is_finite($amount)) {
+                    return $amount;
+                }
             }
         }
 
