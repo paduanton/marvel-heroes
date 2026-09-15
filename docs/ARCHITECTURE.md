@@ -48,7 +48,11 @@ Valid empty collections still return `200` with `data: []`; an empty character-d
 
 The external normalizers require every character, story and comic to have a positive integer `id`. Characters require a string `name`, and stories/comics require a string `title`; labels must be nonempty after PHP `trim`. Numeric strings are not coerced into IDs, and valid labels are preserved verbatim. Missing or malformed required fields reject the entire response through the existing upstream-unavailable exception, not a partially filtered collection. Valid stale data remains usable until a successful refresh replaces it; otherwise the API returns the same safe `502` response without record contents.
 
-These checks validate records received from the integration, not visitor input. Missing optional fields retain the normalizers' existing null/default behavior. Validation of nested structures, URLs, dates and optional-field types remains incomplete. Previously cached entries are not purged or repaired by these checks; remediation requires a separate operator-approved action.
+These checks validate records received from the integration, not visitor input. Missing optional fields retain the normalizers' existing null/default behavior. Previously cached entries are not purged or repaired by these checks; remediation requires a separate operator-approved action.
+
+Optional thumbnails with the wrong container type, missing/non-string/blank path or extension, or the upstream unavailable-image marker produce `image_url: null`. Malformed date and price list containers produce null optional values; non-record entries are ignored. Existing valid image paths, date strings and finite numeric prices are preserved. Prices that overflow to infinity are skipped so they cannot break JSON serialization. A valid record with these nullable fallbacks remains cacheable instead of failing the whole collection.
+
+These are structural fallbacks, not complete semantic validation. URL schemes, actual date formats, numeric ranges and other optional fields (including counts and digital IDs) still need dedicated validation. Required-field failures continue to reject the whole response as described above.
 
 ## Future split
 
