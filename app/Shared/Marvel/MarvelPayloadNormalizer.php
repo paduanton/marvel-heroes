@@ -2,14 +2,16 @@
 
 namespace App\Shared\Marvel;
 
+use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
+
 final class MarvelPayloadNormalizer
 {
     /** @param array<string, mixed> $item @return array<string, mixed> */
     public function character(array $item): array
     {
         return [
-            'id' => (int) ($item['id'] ?? 0),
-            'name' => (string) ($item['name'] ?? ''),
+            'id' => $this->recordId($item['id'] ?? null),
+            'name' => $this->recordLabel($item['name'] ?? null),
             'description' => $this->nullableString($item['description'] ?? null),
             'modified_at' => $this->nullableString($item['modified'] ?? null),
             'image_url' => $this->imageUrl($item['thumbnail'] ?? []),
@@ -20,8 +22,8 @@ final class MarvelPayloadNormalizer
     public function story(array $item): array
     {
         return [
-            'id' => (int) ($item['id'] ?? 0),
-            'title' => (string) ($item['title'] ?? ''),
+            'id' => $this->recordId($item['id'] ?? null),
+            'title' => $this->recordLabel($item['title'] ?? null),
             'type' => $this->nullableString($item['type'] ?? null),
             'modified_at' => $this->nullableString($item['modified'] ?? null),
             'counts' => [
@@ -38,9 +40,9 @@ final class MarvelPayloadNormalizer
     public function comic(array $item): array
     {
         return [
-            'id' => (int) ($item['id'] ?? 0),
+            'id' => $this->recordId($item['id'] ?? null),
             'digital_id' => (int) ($item['digitalId'] ?? 0) ?: null,
-            'title' => (string) ($item['title'] ?? ''),
+            'title' => $this->recordLabel($item['title'] ?? null),
             'description' => $this->nullableString($item['description'] ?? null),
             'format' => $this->nullableString($item['format'] ?? null),
             'modified_at' => $this->nullableString($item['modified'] ?? null),
@@ -48,6 +50,24 @@ final class MarvelPayloadNormalizer
             'digital_price' => $this->priceByType($item, 'digitalPurchasePrice'),
             'image_url' => $this->imageUrl($item['thumbnail'] ?? []),
         ];
+    }
+
+    private function recordId(mixed $value): int
+    {
+        if (! is_int($value) || $value < 1) {
+            throw new MarvelUnavailableException('Marvel API returned an invalid record ID.');
+        }
+
+        return $value;
+    }
+
+    private function recordLabel(mixed $value): string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            throw new MarvelUnavailableException('Marvel API returned an invalid record name or title.');
+        }
+
+        return $value;
     }
 
     /** @param array<string, mixed> $thumbnail */
