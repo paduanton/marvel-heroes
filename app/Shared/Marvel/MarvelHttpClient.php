@@ -8,6 +8,7 @@ use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use stdClass;
 
 final class MarvelHttpClient implements MarvelCatalogGateway
 {
@@ -90,12 +91,25 @@ final class MarvelHttpClient implements MarvelCatalogGateway
             throw new MarvelUnavailableException('Marvel API returned an unsuccessful response.');
         }
 
-        $data = $response->json('data', []);
-        $results = is_array($data['results'] ?? null) ? $data['results'] : [];
+        // Preserve JSON object/array distinctions before converting records for the normalizers.
+        $payload = json_decode($response->body());
+        $data = $payload instanceof stdClass ? ($payload->data ?? null) : null;
+        if (! $data instanceof stdClass
+            || ! is_array($data->results ?? null)
+            || ! is_int($data->total ?? null)
+            || $data->total < 0) {
+            throw new MarvelUnavailableException('Marvel API returned an invalid collection payload.');
+        }
+
+        foreach ($data->results as $item) {
+            if (! $item instanceof stdClass) {
+                throw new MarvelUnavailableException('Marvel API returned an invalid collection item.');
+            }
+        }
 
         return [
-            'items' => array_values(array_map($normalizer, $results)),
-            'total' => (int) ($data['total'] ?? count($results)),
+            'items' => array_map($normalizer, $response->json('data.results')),
+            'total' => $data->total,
         ];
     }
 
