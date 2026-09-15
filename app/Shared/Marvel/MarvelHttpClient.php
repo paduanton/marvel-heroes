@@ -56,6 +56,11 @@ final class MarvelHttpClient implements MarvelCatalogGateway
     /** @param array<string, mixed> $query @param callable(array<string, mixed>): array<string, mixed> $normalizer */
     private function collection(string $path, array $query, callable $normalizer): array
     {
+        $timeout = (int) config('marvel.timeout_seconds');
+        if ($timeout < 1) {
+            throw new MarvelUnavailableException('Marvel HTTP timeout must be a positive number of seconds.');
+        }
+
         try {
             $response = Http::baseUrl((string) config('marvel.base_url'))
                 ->acceptJson()
@@ -63,8 +68,8 @@ final class MarvelHttpClient implements MarvelCatalogGateway
                     $this->budget->reserve();
                     Log::debug('marvel.upstream_call', ['path' => $path]);
                 })
-                ->connectTimeout((int) config('marvel.timeout_seconds'))
-                ->timeout((int) config('marvel.timeout_seconds'))
+                ->connectTimeout($timeout)
+                ->timeout($timeout)
                 ->retry(
                     (int) config('marvel.retry_times'),
                     self::RETRY_DELAY_MILLISECONDS,
