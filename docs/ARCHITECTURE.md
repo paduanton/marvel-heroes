@@ -38,6 +38,14 @@ Laravel defines the retry count as total attempts, not additional retries, and d
 
 `MarvelHttpClient` rejects an effective timeout below one second before dispatch or budget reservation. Fresh cache remains available, and refresh failures can use valid stale entries. Without either, the API returns the existing safe `502 / upstream-unavailable` problem. This is a dispatch-time check, not startup validation; it does not change `/ready`. A zero timeout would otherwise allow an indefinite wait in [Guzzle](https://docs.guzzlephp.org/en/stable/request-options.html#timeout).
 
+## Upstream collection validation
+
+Before normalizing a successful upstream response, the client requires a JSON object containing a `data` object, a `results` JSON array of objects, and a nonnegative integer `total`. It preserves JSON object/array distinctions during validation: `{}` is not accepted as an empty results array. Unknown properties are ignored. This is the adapter's minimum structural contract, not the application's public response format.
+
+Malformed JSON, missing collection fields, incorrectly typed result items and invalid totals raise the existing upstream-unavailable exception. The HTTP attempt remains charged to the budget, and a malformed payload does not trigger an automatic retry. The cache wrapper can serve a valid stale entry without replacing it or renewing its freshness. Without usable cache, the API returns the existing safe `502 / upstream-unavailable` response; payload contents are not included in the error. A later valid response can populate or refresh the cache normally.
+
+Valid empty collections still return `200` with `data: []`; an empty character-detail result still produces `404`. Existing handling of upstream HTTP `404` is unchanged. This increment does not validate each record's required fields, nested structures, URLs or dates, or repair entries cached before validation was added. Those remain separate normalization and cache-remediation concerns.
+
 ## Future split
 
 The Vue client only calls `/api/v1`. Its current TypeScript types are maintained manually against OpenAPI; automated generation is not yet implemented. It can move to a separate deployment later without exposing Marvel credentials or redesigning the Laravel application layer.
