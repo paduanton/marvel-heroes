@@ -79,6 +79,10 @@ docker compose run --rm app php artisan marvel:cache:warm
 
 This operator command may call Marvel and consume the configured budget. It uses `MARVEL_WARM_QUERIES`, accepts repeatable `--query` overrides, and reuses fresh cache entries. It does not force refresh and currently skips the empty query, so it does not warm the unfiltered initial catalog.
 
+## Upstream timeout
+
+`MARVEL_TIMEOUT_SECONDS` must resolve to a positive integer number of seconds (default: `5`). Zero or negative effective values block upstream requests before any HTTP attempt or budget reservation. Existing fresh or valid stale cache can still serve the catalog; an uncached request returns `502` with `upstream-unavailable`, without exposing the configuration error. After correcting local configuration, reload the application/configuration cache as appropriate for the environment. This check runs when the client needs upstream data, not at startup or in `/ready`.
+
 ## Current scope
 
 Catalog endpoints are public and rate-limited. Sanctum and identity persistence are planned in [AUTHENTICATION.md](AUTHENTICATION.md), not implemented. See [ARCHITECTURE.md](ARCHITECTURE.md) for cache and client limitations.

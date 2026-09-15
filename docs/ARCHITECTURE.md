@@ -36,6 +36,8 @@ The five-second margin allows for local processing and the cache write; it is no
 
 Laravel defines the retry count as total attempts, not additional retries, and distinguishes lock lifetime from the wait to acquire it. See [HTTP retries](https://laravel.com/docs/13.x/http-client#retries) and [atomic locks](https://laravel.com/docs/13.x/cache#atomic-locks). This calculation is the application's policy, not a guarantee supplied by Laravel.
 
+`MarvelHttpClient` rejects an effective timeout below one second before dispatch or budget reservation. Fresh cache remains available, and refresh failures can use valid stale entries. Without either, the API returns the existing safe `502 / upstream-unavailable` problem. This is a dispatch-time check, not startup validation; it does not change `/ready`. A zero timeout would otherwise allow an indefinite wait in [Guzzle](https://docs.guzzlephp.org/en/stable/request-options.html#timeout).
+
 ## Future split
 
 The Vue client only calls `/api/v1`. Its current TypeScript types are maintained manually against OpenAPI; automated generation is not yet implemented. It can move to a separate deployment later without exposing Marvel credentials or redesigning the Laravel application layer.
@@ -47,7 +49,7 @@ Catalog discovery is public. Sanctum, the `Identity` module and identity persist
 ## Implementation limits
 
 - The refresh owner waits synchronously for Marvel; this is not background revalidation. Concurrent callers wait briefly for a lock before using stale data when available.
-- The calculated lease assumes positive, bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Configuration validation is not yet enforced; in particular, a zero timeout is unbounded in [Guzzle](https://docs.guzzlephp.org/en/stable/request-options.html#timeout) and must not be used with this policy.
+- The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
 - Frontend cancellation can be wrapped as a catalog error, and overlapping requests can affect loading state. One-character searches, route parameter changes, story pagination and isolated related-content errors still need refinement and regression tests.
