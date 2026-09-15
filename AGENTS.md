@@ -10,6 +10,14 @@ Do not commit, stage, push, rewrite history, or create pull requests without exp
 
 ## Increment Protocol
 
+### Continuous progress
+
+The user gives standing authorization to continue incremental implementation within the current development plan after each interaction, including after an approved commit or push. Handle the newest request first, then resume the next small, verifiable slice without asking a generic question about continuing. Follow an explicit pause or redirection, and stop at any action requiring approval under Authority.
+
+Pending Git approval blocks staging, committing and pushing, not otherwise authorized development. Keep each uncommitted slice independently reviewable and report its scope before proceeding; do not silently accumulate changes or treat this standing instruction as approval of pending commits. At each handoff, identify the next action and ask a precise question only when a real decision or authorization is needed.
+
+### Slice handoff
+
 Complete one small, verifiable slice at a time. After every completed incremental slice, report this exact handoff before starting the next unrelated slice:
 
 ```text
