@@ -44,7 +44,11 @@ Before normalizing a successful upstream response, the client requires a JSON ob
 
 Malformed JSON, missing collection fields, incorrectly typed result items and invalid totals raise the existing upstream-unavailable exception. The HTTP attempt remains charged to the budget, and a malformed payload does not trigger an automatic retry. The cache wrapper can serve a valid stale entry without replacing it or renewing its freshness. Without usable cache, the API returns the existing safe `502 / upstream-unavailable` response; payload contents are not included in the error. A later valid response can populate or refresh the cache normally.
 
-Valid empty collections still return `200` with `data: []`; an empty character-detail result still produces `404`. Existing handling of upstream HTTP `404` is unchanged. This increment does not validate each record's required fields, nested structures, URLs or dates, or repair entries cached before validation was added. Those remain separate normalization and cache-remediation concerns.
+Valid empty collections still return `200` with `data: []`; an empty character-detail result still produces `404`. Existing handling of upstream HTTP `404` is unchanged.
+
+The external normalizers require every character, story and comic to have a positive integer `id`. Characters require a string `name`, and stories/comics require a string `title`; labels must be nonempty after PHP `trim`. Numeric strings are not coerced into IDs, and valid labels are preserved verbatim. Missing or malformed required fields reject the entire response through the existing upstream-unavailable exception, not a partially filtered collection. Valid stale data remains usable until a successful refresh replaces it; otherwise the API returns the same safe `502` response without record contents.
+
+These checks validate records received from the integration, not visitor input. Missing optional fields retain the normalizers' existing null/default behavior. Validation of nested structures, URLs, dates and optional-field types remains incomplete. Previously cached entries are not purged or repaired by these checks; remediation requires a separate operator-approved action.
 
 ## Future split
 
