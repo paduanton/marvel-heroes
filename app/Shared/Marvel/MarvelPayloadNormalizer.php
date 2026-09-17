@@ -80,8 +80,18 @@ final class MarvelPayloadNormalizer
         $path = $thumbnail['path'] ?? null;
         $extension = $thumbnail['extension'] ?? null;
         if (! is_string($path) || ! is_string($extension)
-            || trim($path) === '' || trim($extension) === ''
+            || preg_match('/\A[a-zA-Z0-9]+\z/', $extension) !== 1
+            || filter_var($path, FILTER_VALIDATE_URL) === false
+            || str_contains($path, '\\')
             || str_contains($path, 'image_not_available')) {
+            return null;
+        }
+
+        $parts = parse_url($path);
+        if (! is_array($parts)
+            || ! in_array(strtolower($parts['scheme'] ?? ''), ['http', 'https'], true)
+            || isset($parts['user']) || isset($parts['pass'])
+            || isset($parts['query']) || isset($parts['fragment'])) {
             return null;
         }
 
