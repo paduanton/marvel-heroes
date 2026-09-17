@@ -52,7 +52,13 @@ These checks validate records received from the integration, not visitor input. 
 
 Optional thumbnails with the wrong container type, missing/non-string/blank path or extension, or the upstream unavailable-image marker produce `image_url: null`. Malformed date and price list containers produce null optional values; non-record entries are ignored. Existing valid image paths and finite numeric prices are preserved; date values follow the normalization below. Prices that overflow to infinity are skipped so they cannot break JSON serialization. A valid record with these nullable fallbacks remains cacheable instead of failing the whole collection.
 
-URL schemes, numeric ranges and other optional fields (including counts and digital IDs) still need dedicated validation. Required-field failures continue to reject the whole response as described above.
+Numeric ranges and other optional fields (including counts and digital IDs) still need dedicated validation. Required-field failures continue to reject the whole response as described above.
+
+### Optional images
+
+Thumbnail paths must pass PHP's [URL validation filter](https://www.php.net/manual/en/filter.constants.php#constant.filter-validate-url). The adapter then inspects [URL components](https://www.php.net/manual/en/function.parse-url.php), accepting only absolute HTTP/HTTPS bases without user information, a query or a fragment. Queries and fragments would divert the existing `/portrait_uncanny.{extension}` suffix away from the URL path. Backslashes are rejected; extensions must be nonempty ASCII alphanumeric tokens, without a leading dot. Invalid values produce `image_url: null`, preserving the record and allowing the response to be cached.
+
+Valid base paths, schemes, ports and extension casing are preserved. This is syntax validation, not a domain allowlist, DNS check, image download or content-type check. HTTP is not upgraded to HTTPS, and the filter's ASCII limitation remains; Unicode URLs are not converted. The server makes no additional network calls to validate images, and existing cached URLs are not rewritten or purged. Image availability and browser load-error handling remain separate concerns.
 
 ### Optional dates
 
