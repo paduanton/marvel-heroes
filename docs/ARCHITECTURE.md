@@ -50,9 +50,17 @@ The external normalizers require every character, story and comic to have a posi
 
 These checks validate records received from the integration, not visitor input. Missing optional fields retain the normalizers' existing null/default behavior. Previously cached entries are not purged or repaired by these checks; remediation requires a separate operator-approved action.
 
-Optional thumbnails with the wrong container type, missing/non-string/blank path or extension, or the upstream unavailable-image marker produce `image_url: null`. Malformed date and price list containers produce null optional values; non-record entries are ignored. Existing valid image paths, date strings and finite numeric prices are preserved. Prices that overflow to infinity are skipped so they cannot break JSON serialization. A valid record with these nullable fallbacks remains cacheable instead of failing the whole collection.
+Optional thumbnails with the wrong container type, missing/non-string/blank path or extension, or the upstream unavailable-image marker produce `image_url: null`. Malformed date and price list containers produce null optional values; non-record entries are ignored. Existing valid image paths and finite numeric prices are preserved; date values follow the normalization below. Prices that overflow to infinity are skipped so they cannot break JSON serialization. A valid record with these nullable fallbacks remains cacheable instead of failing the whole collection.
 
-These are structural fallbacks, not complete semantic validation. URL schemes, actual date formats, numeric ranges and other optional fields (including counts and digital IDs) still need dedicated validation. Required-field failures continue to reject the whole response as described above.
+URL schemes, numeric ranges and other optional fields (including counts and digital IDs) still need dedicated validation. Required-field failures continue to reject the whole response as described above.
+
+### Optional dates
+
+The existing OpenAPI contract declares `modified_at` and `on_sale_at` as nullable `date-time` values. [OpenAPI's format registry](https://spec.openapis.org/registry/format/date-time) refers to [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html#section-5.6). The adapter accepts four-digit calendar dates with a complete time (including seconds) and an explicit `Z` or numeric offset. Compact offsets such as `-0400` are converted to `-04:00`; lowercase `t`/`z` become uppercase and surrounding whitespace is trimmed. Fractional seconds are preserved without rounding, as are the local time and offset, including the unknown-offset marker `-00:00`.
+
+Non-string, blank, relative, timezone-less, negative-year and malformed values become `null`. Calendar and clock validation uses PHP's [DateTimeImmutable::createFromFormat](https://www.php.net/manual/en/datetimeimmutable.createfromformat.php); errors and overflow warnings are rejected rather than accepting PHP's automatic rollover. Numeric offset hours/minutes are bounded before parsing. Leap seconds (`:60`) are not supported by this adapter and also become `null`, even though RFC 3339 permits them in specific circumstances.
+
+An invalid optional date does not discard the record, trigger a retry or prevent caching. Newly fetched records follow this policy; existing cache entries are not rewritten or purged. No public schema, endpoint, freshness window or credentials change is involved.
 
 ## Future split
 
