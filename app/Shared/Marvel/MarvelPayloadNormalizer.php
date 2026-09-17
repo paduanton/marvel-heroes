@@ -3,6 +3,7 @@
 namespace App\Shared\Marvel;
 
 use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
+use DateTimeImmutable;
 
 final class MarvelPayloadNormalizer
 {
@@ -13,7 +14,7 @@ final class MarvelPayloadNormalizer
             'id' => $this->recordId($item['id'] ?? null),
             'name' => $this->recordLabel($item['name'] ?? null),
             'description' => $this->nullableString($item['description'] ?? null),
-            'modified_at' => $this->nullableString($item['modified'] ?? null),
+            'modified_at' => $this->nullableDate($item['modified'] ?? null),
             'image_url' => $this->imageUrl($item['thumbnail'] ?? []),
         ];
     }
@@ -25,7 +26,7 @@ final class MarvelPayloadNormalizer
             'id' => $this->recordId($item['id'] ?? null),
             'title' => $this->recordLabel($item['title'] ?? null),
             'type' => $this->nullableString($item['type'] ?? null),
-            'modified_at' => $this->nullableString($item['modified'] ?? null),
+            'modified_at' => $this->nullableDate($item['modified'] ?? null),
             'counts' => [
                 'creators' => (int) data_get($item, 'creators.available', 0),
                 'series' => (int) data_get($item, 'series.available', 0),
@@ -45,7 +46,7 @@ final class MarvelPayloadNormalizer
             'title' => $this->recordLabel($item['title'] ?? null),
             'description' => $this->nullableString($item['description'] ?? null),
             'format' => $this->nullableString($item['format'] ?? null),
-            'modified_at' => $this->nullableString($item['modified'] ?? null),
+            'modified_at' => $this->nullableDate($item['modified'] ?? null),
             'on_sale_at' => $this->dateByType($item, 'onsaleDate'),
             'digital_price' => $this->priceByType($item, 'digitalPurchasePrice'),
             'image_url' => $this->imageUrl($item['thumbnail'] ?? []),
@@ -97,7 +98,7 @@ final class MarvelPayloadNormalizer
 
         foreach ($dates as $date) {
             if (is_array($date) && ($date['type'] ?? null) === $type) {
-                return $this->nullableString($date['date'] ?? null);
+                return $this->nullableDate($date['date'] ?? null);
             }
         }
 
@@ -122,6 +123,29 @@ final class MarvelPayloadNormalizer
         }
 
         return null;
+    }
+
+    private function nullableDate(mixed $value): ?string
+    {
+        $value = $this->nullableString($value);
+        $pattern = '/\A(?<timestamp>[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2})(?<fraction>\.[0-9]+)?(?<offset>[Zz]|[+-](?:[01][0-9]|2[0-3]):?[0-5][0-9])\z/';
+        if ($value === null || preg_match($pattern, $value, $parts) !== 1) {
+            return null;
+        }
+
+        $timestamp = strtoupper($parts['timestamp']);
+        $offset = strtoupper($parts['offset']);
+        if (strlen($offset) === 5) {
+            $offset = substr($offset, 0, 3).':'.substr($offset, 3);
+        }
+
+        // Validate calendar and clock values without rounding fractional seconds.
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:sP', $timestamp.$offset);
+        if ($date === false || DateTimeImmutable::getLastErrors() !== false) {
+            return null;
+        }
+
+        return $timestamp.$parts['fraction'].$offset;
     }
 
     private function nullableString(mixed $value): ?string
