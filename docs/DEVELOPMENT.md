@@ -69,7 +69,7 @@ pnpm run lint
 pnpm run test
 ```
 
-The current frontend tests cover text formatters. End-to-end navigation, cancellation races, accessibility and responsive visual behavior still require dedicated coverage. Passing the build is not evidence of those workflows.
+The frontend tests cover text formatters, HTTP service cancellation/error mapping, and collection request races and scope disposal. Controlled promises and a fake Axios transport keep these tests deterministic and offline. End-to-end navigation, search debounce, page-specific request lifecycles, accessibility and responsive visual behavior still require dedicated coverage. Passing these tests or the build is not evidence of complete browser workflows.
 
 ## Cache warmup
 

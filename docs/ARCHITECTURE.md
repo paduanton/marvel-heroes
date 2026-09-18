@@ -72,6 +72,14 @@ An invalid optional date does not discard the record, trigger a retry or prevent
 
 The Vue client only calls `/api/v1`. Its current TypeScript types are maintained manually against OpenAPI; automated generation is not yet implemented. It can move to a separate deployment later without exposing Marvel credentials or redesigning the Laravel application layer.
 
+### Frontend request lifecycle
+
+The catalog HTTP services preserve Axios cancellation errors instead of wrapping them in `CatalogApiError`. Actual HTTP problems still retain their status, code and detail; transport failures retain the existing fallback message. Requests use [AbortController cancellation](https://axios-http.com/docs/cancellation), not the deprecated CancelToken API.
+
+The character catalog's `useAsyncCollection` aborts its previous request on every new load. Each invocation checks its own signal before updating items, totals, errors or loading state, so an obsolete loader cannot overwrite a newer result even when it ignores cancellation. [Vue scope disposal](https://vuejs.org/api/reactivity-advanced.html#onscopedispose) aborts the current request, ends loading and prevents new loads through that disposed collection. Active failures remain visible and a later load clears the previous error.
+
+These guarantees cover the collection composable and shared HTTP services, not every page workflow. Detail and comics pages still own separate loading logic; their overlapping requests and route changes need equivalent coverage. The catalog's debounce scheduling, minimum query length and route synchronization also remain to be refined. Tests use controlled promises and an Axios transport adapter without real network calls; they are not browser E2E tests.
+
 ## Authentication boundary
 
 Catalog discovery is public. Sanctum, the `Identity` module and identity persistence are planned, not implemented. The design calls for session authentication followed by resource authorization through policies. Read [AUTHENTICATION.md](AUTHENTICATION.md) before implementing a protected endpoint.
@@ -82,5 +90,5 @@ Catalog discovery is public. Sanctum, the `Identity` module and identity persist
 - The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
-- Frontend cancellation can be wrapped as a catalog error, and overlapping requests can affect loading state. One-character searches, route parameter changes, story pagination and isolated related-content errors still need refinement and regression tests.
+- One-character searches, debounce scheduling, route parameter changes, story pagination and isolated related-content errors still need refinement and regression tests. Detail and comics pages do not yet use the collection composable's request lifecycle protection.
 - Stale state is not exposed to the UI. Real upstream behavior, refreshes outliving the lock, Redis outages and complete browser flows remain unverified by the current suites.
