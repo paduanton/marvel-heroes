@@ -78,7 +78,17 @@ The catalog HTTP services preserve Axios cancellation errors instead of wrapping
 
 The character catalog's `useAsyncCollection` aborts its previous request on every new load. Each invocation checks its own signal before updating items, totals, errors or loading state, so an obsolete loader cannot overwrite a newer result even when it ignores cancellation. [Vue scope disposal](https://vuejs.org/api/reactivity-advanced.html#onscopedispose) aborts the current request, ends loading and prevents new loads through that disposed collection. Active failures remain visible and a later load clears the previous error.
 
-These guarantees cover the collection composable and shared HTTP services, not every page workflow. Detail and comics pages still own separate loading logic; their overlapping requests and route changes need equivalent coverage. The catalog's debounce scheduling, minimum query length and route synchronization also remain to be refined. Tests use controlled promises and an Axios transport adapter without real network calls; they are not browser E2E tests.
+These guarantees cover the collection composable and shared HTTP services, not every page workflow. Detail and comics pages still own separate loading logic; their overlapping requests and route changes need equivalent coverage. Tests use controlled promises and an Axios transport adapter without real network calls; they are not browser E2E tests.
+
+### Character search and navigation
+
+`useCharacterCatalog` owns the character page's interaction rules. The URL supplies the applied query and page; the input keeps a separate draft during a 300 ms debounce. The title describes the applied query until navigation completes. A changed search pushes one history entry, resets pagination to page one and lets the route watcher perform the request. This avoids a second request from resetting the page while typing. Unchanged trimmed searches do not reload the catalog.
+
+The feature watches the catalog route name, query and page, following [Vue Router's guidance on watching relevant route properties](https://router.vuejs.org/guide/advanced/composition-api.html). Back/forward navigation restores the input, pagination and results without another debounce. Unrelated query parameters are preserved. Other catalog URL changes and leaving the page cancel pending drafts; scope disposal clears the timer. Pagination actions use the applied filter and respect the loaded total and loading state.
+
+Search text is trimmed. An empty query loads the unfiltered catalog; one Unicode code point or more than 100 produces a local validation message, clears the collection and makes no HTTP call. This mirrors the existing OpenAPI bounds without replacing backend validation. Invalid page values, including non-decimal and unsafe integers, fall back to page one for display and requests; incoming URLs are not rewritten solely to canonicalize those values. The collection's `reset` operation cancels pending work, clears items/total/error/loading, and allows a later load to recover.
+
+Tests cover this feature using the real Vue Router with memory history, fake timers and a simulated HTTP transport. They verify debounce timing, request counts, validation, pagination, back/forward navigation and cleanup. Mounted-page rendering and real browser history remain outside this coverage.
 
 ## Authentication boundary
 
@@ -90,5 +100,5 @@ Catalog discovery is public. Sanctum, the `Identity` module and identity persist
 - The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
-- One-character searches, debounce scheduling, route parameter changes, story pagination and isolated related-content errors still need refinement and regression tests. Detail and comics pages do not yet use the collection composable's request lifecycle protection.
+- Detail/comics route parameter changes, story pagination and isolated related-content errors still need refinement and regression tests. Detail and comics pages do not yet use the collection composable's request lifecycle protection. The catalog's tested search/navigation logic still needs verification in a mounted browser page.
 - Stale state is not exposed to the UI. Real upstream behavior, refreshes outliving the lock, Redis outages and complete browser flows remain unverified by the current suites.
