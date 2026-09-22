@@ -26,6 +26,29 @@ beforeEach(() => {
 afterEach(() => scope.stop());
 
 describe('async catalog collection', () => {
+  it('resets existing data and cancels a pending load without accepting its result', async () => {
+    await collection.load(async () => olderResult);
+    const pending = deferred<ApiCollection<number>>();
+    let signal: AbortSignal | undefined;
+    const load = collection.load((requestSignal) => {
+      signal = requestSignal;
+      return pending.promise;
+    });
+
+    collection.reset();
+    expect(signal?.aborted).toBe(true);
+    expect(collection.items.value).toEqual([]);
+    expect(collection.total.value).toBe(0);
+    expect(collection.loading.value).toBe(false);
+    expect(collection.error.value).toBeNull();
+    pending.resolve(olderResult);
+    await load;
+    expect(collection.items.value).toEqual([]);
+
+    await collection.load(async () => latestResult);
+    expect(collection.items.value).toEqual([2]);
+  });
+
   it('keeps loading the latest request when an older loader ignores cancellation', async () => {
     const older = deferred<ApiCollection<number>>();
     const latest = deferred<ApiCollection<number>>();

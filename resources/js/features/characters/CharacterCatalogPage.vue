@@ -1,54 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import CharacterCard from '@/components/CharacterCard.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
-import { useAsyncCollection } from '@/composables/useAsyncCollection';
-import { listCharacters } from '@/services/catalog';
-import type { Character } from '@/types/catalog';
+import { useCharacterCatalog } from './useCharacterCatalog';
 
-const route = useRoute();
-const router = useRouter();
-const search = ref(typeof route.query.query === 'string' ? route.query.query : '');
-const page = ref(Number(route.query.page ?? 1) || 1);
-const perPage = 20;
-const { error, items, load: loadCatalog, loading, total } = useAsyncCollection<Character>();
-let debounceTimer: ReturnType<typeof setTimeout> | undefined;
-
-const title = computed(() => search.value ? `Results for "${search.value}"` : 'Discover Marvel characters');
-
-function load() {
-  loadCatalog((signal) => listCharacters({ query: search.value, page: page.value, perPage }, signal));
-}
-
-function updateRoute() {
-  router.replace({ query: { ...(search.value ? { query: search.value } : {}), ...(page.value > 1 ? { page: String(page.value) } : {}) } });
-}
-
-function next() {
-  page.value += 1;
-}
-
-function previous() {
-  page.value -= 1;
-}
-
-watch(search, () => {
-  page.value = 1;
-  clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    updateRoute();
-    load();
-  }, 300);
-});
-
-watch(page, () => {
-  updateRoute();
-  load();
-});
-
-onMounted(load);
+const { search, page, perPage, title, items, total, loading, error, next, previous } = useCharacterCatalog(useRouter());
 </script>
 
 <template>

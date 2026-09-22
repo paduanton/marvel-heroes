@@ -15,6 +15,15 @@ export function useAsyncCollection<T>() {
     loading.value = false;
   });
 
+  function reset() {
+    if (disposed) return;
+    controller?.abort();
+    items.value = [];
+    total.value = 0;
+    loading.value = false;
+    error.value = null;
+  }
+
   async function load(loader: (signal: AbortSignal) => Promise<ApiCollection<T>>) {
     if (disposed) return;
     controller?.abort();
@@ -36,5 +45,5 @@ export function useAsyncCollection<T>() {
     }
   }
 
-  return { items, total, loading, error, load };
+  return { items, total, loading, error, load, reset };
 }
