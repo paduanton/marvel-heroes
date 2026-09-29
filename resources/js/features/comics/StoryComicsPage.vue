@@ -1,38 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
-import { listComics } from '@/services/catalog';
-import type { Comic } from '@/types/catalog';
 import { excerpt } from '@/utils/formatters';
+import { useStoryComics } from './useStoryComics';
 
 const props = defineProps<{ id: string }>();
-const comics = ref<Comic[]>([]);
-const total = ref(0);
-const page = ref(1);
-const perPage = 20;
-const loading = ref(true);
-const error = ref<string | null>(null);
-
-async function load() {
-  loading.value = true;
-  error.value = null;
-  try {
-    const result = await listComics(props.id, { page: page.value, perPage });
-    comics.value = result.data;
-    total.value = result.meta.total;
-  } catch (exception) {
-    error.value = exception instanceof Error ? exception.message : 'Unable to load related comics.';
-  } finally {
-    loading.value = false;
-  }
-}
-
-function next() { page.value += 1; load(); }
-function previous() { page.value -= 1; load(); }
-
-onMounted(load);
+const { comics, total, page, perPage, loading, error, next, previous } = useStoryComics(() => props.id);
 </script>
 
 <template>
