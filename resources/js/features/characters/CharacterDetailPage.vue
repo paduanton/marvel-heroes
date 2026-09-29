@@ -1,35 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
-import { getCharacter, listStories } from '@/services/catalog';
-import type { Character, Story } from '@/types/catalog';
 import { displayDate, excerpt, initials } from '@/utils/formatters';
+import { useCharacterDetail } from './useCharacterDetail';
 
 const props = defineProps<{ id: string }>();
-const character = ref<Character | null>(null);
-const stories = ref<Story[]>([]);
-const loading = ref(true);
-const error = ref<string | null>(null);
-
-async function load() {
-  loading.value = true;
-  error.value = null;
-  try {
-    const [characterResult, storiesResult] = await Promise.all([
-      getCharacter(props.id),
-      listStories(props.id, { page: 1, perPage: 10 }),
-    ]);
-    character.value = characterResult;
-    stories.value = storiesResult.data;
-  } catch (exception) {
-    error.value = exception instanceof Error ? exception.message : 'Unable to load this character.';
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(load);
+const { character, stories, loading, error, storiesLoading, storiesError } = useCharacterDetail(() => props.id);
 </script>
 
 <template>
@@ -50,13 +26,14 @@ onMounted(load);
 
     <section class="related-section">
       <div class="section-heading"><div><p class="eyebrow">Related stories</p><h2>Stories to explore next</h2></div></div>
-      <div v-if="stories.length" class="story-list">
-        <article v-for="story in stories" :key="story.id" class="story-item">
-          <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>
-          <RouterLink :to="{ name: 'story-comics', params: { id: story.id } }">View comics</RouterLink>
-        </article>
-      </div>
-      <p v-else class="status-panel">No related stories are available for this character.</p>
+      <AsyncPanel :loading="storiesLoading" :error="storiesError" :empty="stories.length === 0" empty-message="No related stories are available for this character.">
+        <div class="story-list">
+          <article v-for="story in stories" :key="story.id" class="story-item">
+            <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>
+            <RouterLink :to="{ name: 'story-comics', params: { id: story.id } }">View comics</RouterLink>
+          </article>
+        </div>
+      </AsyncPanel>
     </section>
   </AsyncPanel>
 </template>
