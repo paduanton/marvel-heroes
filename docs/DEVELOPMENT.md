@@ -69,7 +69,7 @@ pnpm run lint
 pnpm run test
 ```
 
-The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, and character search/navigation. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation, detail/comics request lifecycles, accessibility and responsive visual behavior still require dedicated coverage. Passing these tests or the build is not evidence of complete browser workflows.
+The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, character search/navigation and story comics loading. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. The comics suite uses a reactive story ID and Vue effect scope to verify reloads on ID changes, pagination bounds, cancellation, late responses, empty results, error recovery and disposal. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation, character detail request lifecycles, accessibility and responsive visual behavior still require dedicated coverage. Passing these tests or the build is not evidence of complete browser workflows.
 
 ## Cache warmup
 
