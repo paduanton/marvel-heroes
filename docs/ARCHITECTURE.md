@@ -78,7 +78,7 @@ The catalog HTTP services preserve Axios cancellation errors instead of wrapping
 
 The character catalog's `useAsyncCollection` aborts its previous request on every new load. Each invocation checks its own signal before updating items, totals, errors or loading state, so an obsolete loader cannot overwrite a newer result even when it ignores cancellation. [Vue scope disposal](https://vuejs.org/api/reactivity-advanced.html#onscopedispose) aborts the current request, ends loading and prevents new loads through that disposed collection. Active failures remain visible and a later load clears the previous error.
 
-These guarantees cover the collection composable, character catalog, story comics and shared HTTP services, not every page workflow. Character detail still owns separate loading logic; its overlapping requests and route changes need equivalent coverage. Tests use controlled promises and an Axios transport adapter without real network calls; they are not browser E2E tests.
+These guarantees cover the collection composable, character catalog, story comics and shared HTTP services. Character detail uses the same collection lifecycle for stories and a separate abortable request for its single character resource, as described below. Tests use controlled promises and an Axios transport adapter without real network calls; they are not browser E2E tests.
 
 ### Character search and navigation
 
@@ -98,6 +98,14 @@ Pagination remains local to the page, not in the URL. Previous/next actions resp
 
 Tests use a reactive story ID, a Vue effect scope and a simulated Axios transport to verify page resets, cancellation, late responses, pagination bounds, empty results, error recovery and disposal. They do not mount the page or verify navigation in a browser.
 
+### Character detail lifecycle
+
+`useCharacterDetail` watches the character ID supplied by the page. Each change clears the previous character, stories and errors and starts independent requests for the character and the first ten stories. The character becomes available as soon as its own request completes. Slow or failed stories affect only the related section's loading/error/empty state; they do not hide a successfully loaded character. A character error remains the page-level error, so related content is shown only after a character is available.
+
+Changing IDs aborts both previous requests. Each character request checks its own abort signal before updating the resource, error or loading state; stories reuse `useAsyncCollection`. Scope disposal cancels pending requests and ends both loading states. A later character change recovers from either failure without preserving the previous character's data. An unchanged ID does not reload.
+
+Tests cover these interactions through a reactive ID and Vue effect scope, using controlled HTTP responses for cancellation, out-of-order completion, independent failures, recovery and empty stories. They do not mount the page or replace browser verification. Story pagination and an explicit retry action remain unimplemented; story requests still use page one with ten items, and ID validation remains on the backend.
+
 ## Authentication boundary
 
 Catalog discovery is public. Sanctum, the `Identity` module and identity persistence are planned, not implemented. The design calls for session authentication followed by resource authorization through policies. Read [AUTHENTICATION.md](AUTHENTICATION.md) before implementing a protected endpoint.
@@ -108,5 +116,5 @@ Catalog discovery is public. Sanctum, the `Identity` module and identity persist
 - The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
-- Character detail route parameter changes, story pagination and isolated related-content errors still need refinement and regression tests. Character detail does not yet use the collection composable's request lifecycle protection. The tested catalog and comics interactions still need verification in mounted browser pages.
+- Story pagination and explicit retry controls remain unimplemented. The tested catalog, character detail and comics interactions still need verification in mounted browser pages, including independent status rendering and route-driven prop updates.
 - Stale state is not exposed to the UI. Real upstream behavior, refreshes outliving the lock, Redis outages and complete browser flows remain unverified by the current suites.
