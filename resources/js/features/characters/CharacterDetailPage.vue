@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
+import PaginationControls from '@/components/PaginationControls.vue';
 import { displayDate, excerpt, initials } from '@/utils/formatters';
 import { useCharacterDetail } from './useCharacterDetail';
 
 const props = defineProps<{ id: string }>();
-const { character, stories, loading, error, storiesLoading, storiesError } = useCharacterDetail(() => props.id);
+const { character, stories, loading, error, storiesLoading, storiesError,
+  storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories } = useCharacterDetail(() => props.id);
 </script>
 
 <template>
@@ -34,6 +36,7 @@ const { character, stories, loading, error, storiesLoading, storiesError } = use
           </article>
         </div>
       </AsyncPanel>
+      <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" @previous="previousStories" @next="nextStories" />
     </section>
   </AsyncPanel>
 </template>

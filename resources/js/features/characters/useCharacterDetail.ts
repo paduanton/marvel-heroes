@@ -5,7 +5,9 @@ import type { Character, Story } from '@/types/catalog';
 
 export function useCharacterDetail(characterId: () => string) {
   const character = ref<Character | null>(null);
-  const { items: stories, loading: storiesLoading, error: storiesError, load: loadStories, reset: resetStories } = useAsyncCollection<Story>();
+  const { items: stories, total: storiesTotal, loading: storiesLoading, error: storiesError, load: loadStories, reset: resetStories } = useAsyncCollection<Story>();
+  const storiesPage = ref(1);
+  const storiesPerPage = 10;
   const loading = ref(true);
   const error = ref<string | null>(null);
   let controller: AbortController | undefined;
@@ -33,11 +35,29 @@ export function useCharacterDetail(characterId: () => string) {
     }
   }
 
+  function loadStoriesPage(id: string) {
+    return loadStories((signal) => listStories(id, { page: storiesPage.value, perPage: storiesPerPage }, signal));
+  }
+
+  function nextStories() {
+    if (storiesLoading.value || storiesPage.value * storiesPerPage >= storiesTotal.value) return;
+    storiesPage.value += 1;
+    return loadStoriesPage(characterId());
+  }
+
+  function previousStories() {
+    if (storiesLoading.value || storiesPage.value <= 1) return;
+    storiesPage.value -= 1;
+    return loadStoriesPage(characterId());
+  }
+
   watch(characterId, (id) => {
     character.value = null;
+    storiesPage.value = 1;
     resetStories();
     void load(id);
-    void loadStories((signal) => listStories(id, { page: 1, perPage: 10 }, signal));
+    void loadStoriesPage(id);
   }, { immediate: true });
-  return { character, stories, loading, error, storiesLoading, storiesError };
+  return { character, stories, loading, error, storiesLoading, storiesError,
+    storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories };
 }

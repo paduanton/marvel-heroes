@@ -36,6 +36,153 @@ async function start() {
 }
 
 describe('character detail', () => {
+  it('keeps a pagination failure isolated from the character and recovers on a previous page', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    api.defaults.adapter = async (config) => {
+      if (config.url?.endsWith('/stories') && config.params.page === 2) throw new Error('Offline');
+      const response = await respond(config);
+      if (config.url?.endsWith('/stories')) response.data.meta.total = 20;
+      return response;
+    };
+    const { detail } = await start();
+    await detail.nextStories();
+    expect(detail.storiesPage.value).toBe(2);
+    expect(detail.storiesError.value).toBe('Unable to load the catalog right now.');
+    expect(detail.storiesLoading.value).toBe(false);
+    expect(detail.character.value?.id).toBe(1);
+    expect(detail.error.value).toBeNull();
+    await detail.previousStories();
+    expect(detail.storiesPage.value).toBe(1);
+    expect(detail.storiesError.value).toBeNull();
+    expect(detail.stories.value[0].title).toBe('/characters/1/stories');
+  });
+
+  it('does not paginate an empty story collection', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    let storyRequests = 0;
+    api.defaults.adapter = async (config) => {
+      if (config.url?.endsWith('/stories')) {
+        storyRequests += 1;
+        return { config, headers: {}, status: 200, statusText: 'OK',
+          data: { data: [], meta: { page: 1, per_page: 10, total: 0 } } };
+      }
+      return respond(config);
+    };
+    const { detail } = await start();
+    await detail.nextStories();
+    await detail.previousStories();
+    expect(detail.storiesPage.value).toBe(1);
+    expect(detail.stories.value).toEqual([]);
+    expect(detail.storiesTotal.value).toBe(0);
+    expect(storyRequests).toBe(1);
+  });
+
+  it('resets story pagination and cancels a pending page when the character changes', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    let oldSignal: GenericAbortSignal | undefined;
+    const pages: { url?: string; page: number }[] = [];
+    api.defaults.adapter = async (config) => {
+      if (config.url?.endsWith('/stories')) {
+        pages.push({ url: config.url, page: config.params.page });
+        if (config.url === '/characters/1/stories' && config.params.page === 2) {
+          oldSignal = config.signal;
+          await gate;
+        }
+      }
+      const response = await respond(config);
+      if (config.url?.endsWith('/stories')) response.data.meta.total = 30;
+      return response;
+    };
+    const { detail, characterId } = await start();
+    const pendingPage = detail.nextStories();
+    await setImmediate();
+    characterId.value = '2';
+    await setImmediate();
+    try {
+      expect(oldSignal?.aborted).toBe(true);
+      expect(detail.storiesPage.value).toBe(1);
+      expect(pages.at(-1)).toEqual({ url: '/characters/2/stories', page: 1 });
+    } finally {
+      release();
+      await pendingPage;
+    }
+    expect(detail.character.value?.id).toBe(2);
+    expect(detail.stories.value[0].title).toBe('/characters/2/stories');
+    expect(detail.storiesLoading.value).toBe(false);
+    expect(detail.storiesError.value).toBeNull();
+  });
+
+  it('ignores additional pagination actions while stories are loading', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const pages: number[] = [];
+    api.defaults.adapter = async (config) => {
+      if (config.url?.endsWith('/stories')) {
+        pages.push(config.params.page);
+        if (config.params.page === 2) await gate;
+      }
+      const response = await respond(config);
+      if (config.url?.endsWith('/stories')) response.data.meta.total = 30;
+      return response;
+    };
+    const { detail } = await start();
+    const pendingPage = detail.nextStories();
+    await setImmediate();
+    try {
+      detail.nextStories();
+      detail.previousStories();
+      await setImmediate();
+      expect(detail.storiesPage.value).toBe(2);
+      expect(pages).toEqual([1, 2]);
+      expect(detail.storiesLoading.value).toBe(true);
+      expect(detail.character.value?.id).toBe(1);
+      expect(detail.loading.value).toBe(false);
+    } finally {
+      release();
+      await pendingPage;
+      await setImmediate();
+    }
+    expect(detail.storiesLoading.value).toBe(false);
+  });
+
+  it('paginates stories within their total without reloading the character', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    const requests: { url?: string; page?: number; per_page?: number }[] = [];
+    api.defaults.adapter = async (config) => {
+      requests.push({ url: config.url, ...config.params });
+      const response = await respond(config);
+      if (config.url?.endsWith('/stories')) {
+        response.data.meta = { page: config.params.page, per_page: 10, total: 25 };
+        response.data.data[0].title = `Story page ${config.params.page}`;
+      }
+      return response;
+    };
+    const { detail } = await start();
+    await detail.previousStories();
+    expect(detail.storiesPage.value).toBe(1);
+    await detail.nextStories();
+    expect(detail.stories.value[0].title).toBe('Story page 2');
+    await detail.nextStories();
+    await detail.nextStories();
+    expect(detail.storiesPage.value).toBe(3);
+    expect(detail.storiesTotal.value).toBe(25);
+    expect(detail.storiesPerPage).toBe(10);
+    await detail.previousStories();
+    expect(detail.storiesPage.value).toBe(2);
+    expect(detail.character.value?.id).toBe(1);
+    expect(detail.loading.value).toBe(false);
+    expect(requests).toEqual([
+      { url: '/characters/1' },
+      { url: '/characters/1/stories', page: 1, per_page: 10 },
+      { url: '/characters/1/stories', page: 2, per_page: 10 },
+      { url: '/characters/1/stories', page: 3, per_page: 10 },
+      { url: '/characters/1/stories', page: 2, per_page: 10 },
+    ]);
+  });
+
   it('makes the character available before its stories finish loading', async () => {
     const respond = api.defaults.adapter as AxiosAdapter;
     let release!: () => void;
