@@ -104,7 +104,11 @@ Tests use a reactive story ID, a Vue effect scope and a simulated Axios transpor
 
 Changing IDs aborts both previous requests. Each character request checks its own abort signal before updating the resource, error or loading state; stories reuse `useAsyncCollection`. Scope disposal cancels pending requests and ends both loading states. A later character change recovers from either failure without preserving the previous character's data. An unchanged ID does not reload.
 
-Tests cover these interactions through a reactive ID and Vue effect scope, using controlled HTTP responses for cancellation, out-of-order completion, independent failures, recovery and empty stories. They do not mount the page or replace browser verification. Story pagination and an explicit retry action remain unimplemented; story requests still use page one with ten items, and ID validation remains on the backend.
+Stories use local pagination with ten items per page. Previous/next actions respect the loaded total and ignore actions while a story request is pending. Paging fetches only stories, leaving the character visible without another detail request. Changing characters resets the page to one and aborts any pending page of the old character. Pagination is not stored in the URL.
+
+The page reuses the catalog pagination controls below the stories' status panel. Controls are hidden during story loading, but remain available after a page error when the loaded total permits pagination, allowing navigation back to a previous page. An explicit same-page retry action remains unimplemented. ID validation remains on the backend.
+
+Tests cover these interactions through a reactive ID and Vue effect scope, using controlled HTTP responses for cancellation, out-of-order completion, independent failures, recovery, pagination bounds, repeated actions while loading and empty stories. They do not mount the page or replace browser verification.
 
 ## Authentication boundary
 
@@ -116,5 +120,5 @@ Catalog discovery is public. Sanctum, the `Identity` module and identity persist
 - The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
-- Story pagination and explicit retry controls remain unimplemented. The tested catalog, character detail and comics interactions still need verification in mounted browser pages, including independent status rendering and route-driven prop updates.
+- Explicit retry controls remain unimplemented. The tested catalog, character detail and comics interactions still need verification in mounted browser pages, including independent status rendering, story pagination controls and route-driven prop updates.
 - Stale state is not exposed to the UI. Real upstream behavior, refreshes outliving the lock, Redis outages and complete browser flows remain unverified by the current suites.
