@@ -96,7 +96,9 @@ Tests cover this feature using the real Vue Router with memory history, fake tim
 
 Pagination remains local to the page, not in the URL. Previous/next actions respect the loaded total and do nothing during loading. Empty results remain empty, active failures remain visible, and a later story change clears the failure and loads again. Story ID validation remains the backend's responsibility.
 
-Tests use a reactive story ID, a Vue effect scope and a simulated Axios transport to verify page resets, cancellation, late responses, pagination bounds, empty results, error recovery and disposal. They do not mount the page or verify navigation in a browser.
+After a comic error, a manual retry repeats the current story/page with the same page size. The action ignores calls without an error or during loading. A successful retry clears the error; another failure remains visible for another manual attempt. The page exposes the retry button even when the initial request failed without a loaded total. Pagination sits outside the status panel and remains available after a page error when the loaded total allows it, so the visitor can return to a previous page. Both controls are hidden during loading. Retries use the ordinary catalog endpoint, cache and rate limits; there is no automatic retry or cache-refresh flag.
+
+Tests use a reactive story ID, a Vue effect scope and a simulated Axios transport to verify page resets, cancellation, late responses, pagination bounds, empty results, error recovery and disposal. Recovery cases also cover retries on first/later pages, redundant actions and persistent page failures followed by previous-page navigation. They do not mount the page or verify navigation, button visibility or keyboard focus in a browser.
 
 ### Character detail lifecycle
 
@@ -122,5 +124,5 @@ Catalog discovery is public. Sanctum, the `Identity` module and identity persist
 - The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
-- Explicit retry controls for the character resource, character catalog and comics remain unimplemented. Story retries are implemented, but the tested interactions still need verification in mounted browser pages, including status rendering, retry/pagination controls, keyboard focus and route-driven prop updates.
+- Explicit retry controls for the character resource and character catalog remain unimplemented. Story and comic retries are implemented, but the tested interactions still need verification in mounted browser pages, including status rendering, retry/pagination controls, keyboard focus and route-driven prop updates.
 - Stale state is not exposed to the UI. Real upstream behavior, refreshes outliving the lock, Redis outages and complete browser flows remain unverified by the current suites.

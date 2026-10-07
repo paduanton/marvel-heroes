@@ -73,6 +73,8 @@ The frontend tests cover text formatters, HTTP service cancellation/error mappin
 
 The separate `useCharacterDetail.retry.test.ts` suite covers manual story retries on the first and subsequent pages, preservation of the character and pagination, redundant-action guards, repeated failure and cancellation on character changes or disposal. It uses the same simulated HTTP boundary and does not verify button rendering, focus behavior or browser interaction.
 
+`useStoryComics.test.ts` also covers manual retries on first/later comic pages, actions without an error or during loading, and recovery via previous-page navigation after repeated failures. Button/pagination rendering and keyboard focus still require mounted-page or browser validation.
+
 ## Cache warmup
 
 ```powershell
