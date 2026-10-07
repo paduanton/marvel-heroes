@@ -6,7 +6,7 @@ import { displayDate, excerpt, initials } from '@/utils/formatters';
 import { useCharacterDetail } from './useCharacterDetail';
 
 const props = defineProps<{ id: string }>();
-const { character, stories, loading, error, storiesLoading, storiesError,
+const { character, stories, loading, error, retryCharacter, storiesLoading, storiesError,
   storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id);
 </script>
 
@@ -40,10 +40,11 @@ const { character, stories, loading, error, storiesLoading, storiesError,
       <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" @previous="previousStories" @next="nextStories" />
     </section>
   </AsyncPanel>
+  <button v-if="error && !loading" type="button" class="retry-button" @click="retryCharacter">Try character again</button>
 </template>
 
 <style scoped>
-.retry-stories {
+.retry-button, .retry-stories {
   display: block;
   min-height: 44px;
   max-width: 100%;
@@ -54,7 +55,7 @@ const { character, stories, loading, error, storiesLoading, storiesError,
   color: #111827;
 }
 
-.retry-stories:focus-visible {
+.retry-button:focus-visible, .retry-stories:focus-visible {
   outline: 3px solid #e62429;
   outline-offset: 3px;
 }

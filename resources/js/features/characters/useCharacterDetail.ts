@@ -11,8 +11,10 @@ export function useCharacterDetail(characterId: () => string) {
   const loading = ref(true);
   const error = ref<string | null>(null);
   let controller: AbortController | undefined;
+  let disposed = false;
 
   onScopeDispose(() => {
+    disposed = true;
     controller?.abort();
     loading.value = false;
   });
@@ -39,6 +41,11 @@ export function useCharacterDetail(characterId: () => string) {
     return loadStories((signal) => listStories(id, { page: storiesPage.value, perPage: storiesPerPage }, signal));
   }
 
+  function retryCharacter() {
+    if (disposed || loading.value || !error.value) return;
+    return load(characterId());
+  }
+
   function nextStories() {
     if (storiesLoading.value || storiesPage.value * storiesPerPage >= storiesTotal.value) return;
     storiesPage.value += 1;
@@ -63,6 +70,6 @@ export function useCharacterDetail(characterId: () => string) {
     void load(id);
     void loadStoriesPage(id);
   }, { immediate: true });
-  return { character, stories, loading, error, storiesLoading, storiesError,
+  return { character, stories, loading, error, retryCharacter, storiesLoading, storiesError,
     storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories, retryStories };
 }
