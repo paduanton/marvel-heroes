@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
+import CatalogImage from '@/components/CatalogImage.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { excerpt } from '@/utils/formatters';
 import { focusRetryRegion } from '@/utils/focus';
@@ -19,7 +20,7 @@ const { comics, total, page, perPage, loading, error, next, previous, retry } = 
     <AsyncPanel :loading="loading" :error="error" :empty="comics.length === 0" empty-message="No comics are available for this story.">
       <section class="comic-grid">
         <article v-for="comic in comics" :key="comic.id" class="comic-card">
-          <div class="comic-card__image"><img v-if="comic.image_url" :src="comic.image_url" :alt="comic.title" loading="lazy" /><span v-else class="image-fallback">MH</span></div>
+          <div class="comic-card__image"><CatalogImage :src="comic.image_url" :alt="comic.title" fallback="MH" /></div>
           <div><p class="eyebrow">{{ comic.format ?? 'Comic' }}</p><h2>{{ comic.title }}</h2><p>{{ excerpt(comic.description, 120) }}</p></div>
         </article>
       </section>

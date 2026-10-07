@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
+import CatalogImage from '@/components/CatalogImage.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { displayDate, excerpt, initials } from '@/utils/formatters';
 import { focusRetryRegion } from '@/utils/focus';
@@ -20,8 +21,7 @@ const { character, stories, loading, error, retryCharacter, storiesLoading, stor
     <AsyncPanel :loading="loading" :error="error" :empty="!character" empty-message="This character is not available.">
       <section v-if="character" class="character-hero">
         <div class="character-hero__portrait">
-          <img v-if="character.image_url" :src="character.image_url" :alt="character.name" />
-          <span v-else class="image-fallback image-fallback--large" aria-hidden="true">{{ initials(character.name) }}</span>
+          <CatalogImage :src="character.image_url" :alt="character.name" :fallback="initials(character.name)" large loading="eager" />
         </div>
         <div class="character-hero__copy">
           <p class="eyebrow">Character dossier</p>

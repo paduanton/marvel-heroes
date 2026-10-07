@@ -18,6 +18,8 @@ const comic: Comic = {
 export async function mockCatalog(page: Page) {
   const failures = new Map<string, number>();
   const requests: URL[] = [];
+  const characterImages = new Map<number, string>();
+  const comicImages = new Map<number, string>();
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url());
     requests.push(url);
@@ -34,19 +36,23 @@ export async function mockCatalog(page: Page) {
     const perPage = Number(url.searchParams.get('per_page') ?? 20);
     let data: unknown;
     let total: number;
+    const characters = [spiderMan, ironMan].map(item => ({
+      ...item, image_url: characterImages.get(item.id) ?? null,
+    }));
     if (url.pathname === '/api/v1/characters') {
       const query = url.searchParams.get('query')?.toLowerCase();
-      const filtered = [spiderMan, ironMan].filter(item => !query || item.name.toLowerCase().startsWith(query));
+      const filtered = characters.filter(item => !query || item.name.toLowerCase().startsWith(query));
       data = query || currentPage === 1 ? filtered : [{ ...spiderMan, id: 3, name: 'Thor' }];
       total = query ? filtered.length : 40;
     } else if (/^\/api\/v1\/characters\/\d+$/.test(url.pathname)) {
-      await route.fulfill({ json: { data: url.pathname.endsWith('/2') ? ironMan : spiderMan } });
+      await route.fulfill({ json: { data: characters[url.pathname.endsWith('/2') ? 1 : 0] } });
       return;
     } else if (/^\/api\/v1\/characters\/\d+\/stories$/.test(url.pathname)) {
       data = currentPage === 1 ? [story] : [{ ...story, id: 102, title: 'Next adventure' }];
       total = 11;
     } else if (/^\/api\/v1\/stories\/\d+\/comics$/.test(url.pathname)) {
-      data = currentPage === 1 ? [comic] : [{ ...comic, id: 1002, title: 'Amazing Spider-Man #2' }];
+      const item = currentPage === 1 ? comic : { ...comic, id: 1002, title: 'Amazing Spider-Man #2' };
+      data = [{ ...item, image_url: comicImages.get(item.id) ?? null }];
       total = 21;
     } else {
       await route.fulfill({ status: 404, json: {} });
@@ -54,5 +60,5 @@ export async function mockCatalog(page: Page) {
     }
     await route.fulfill({ json: { data, meta: { page: currentPage, per_page: perPage, total } } });
   });
-  return { failures, requests };
+  return { failures, requests, characterImages, comicImages };
 }
