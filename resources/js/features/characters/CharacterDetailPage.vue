@@ -1,46 +1,52 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { displayDate, excerpt, initials } from '@/utils/formatters';
+import { focusRetryRegion } from '@/utils/focus';
 import { useCharacterDetail } from './useCharacterDetail';
 
 const props = defineProps<{ id: string }>();
+const characterRegion = ref<HTMLElement | null>(null);
+const storiesRegion = ref<HTMLElement | null>(null);
 const { character, stories, loading, error, retryCharacter, storiesLoading, storiesError,
   storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id);
 </script>
 
 <template>
   <RouterLink class="back-link" to="/">Back to characters</RouterLink>
-  <AsyncPanel :loading="loading" :error="error" :empty="!character" empty-message="This character is not available.">
-    <section v-if="character" class="character-hero">
-      <div class="character-hero__portrait">
-        <img v-if="character.image_url" :src="character.image_url" :alt="character.name" />
-        <span v-else class="image-fallback image-fallback--large" aria-hidden="true">{{ initials(character.name) }}</span>
-      </div>
-      <div class="character-hero__copy">
-        <p class="eyebrow">Character dossier</p>
-        <h1>{{ character.name }}</h1>
-        <p class="lead">{{ excerpt(character.description, 520) }}</p>
-        <p v-if="displayDate(character.modified_at)" class="metadata">Last updated by Marvel: {{ displayDate(character.modified_at) }}</p>
-      </div>
-    </section>
-
-    <section class="related-section">
-      <div class="section-heading"><div><p class="eyebrow">Related stories</p><h2>Stories to explore next</h2></div></div>
-      <AsyncPanel :loading="storiesLoading" :error="storiesError" :empty="stories.length === 0" empty-message="No related stories are available for this character.">
-        <div class="story-list">
-          <article v-for="story in stories" :key="story.id" class="story-item">
-            <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>
-            <RouterLink :to="{ name: 'story-comics', params: { id: story.id } }">View comics</RouterLink>
-          </article>
+  <section ref="characterRegion" class="retry-region" tabindex="-1" aria-label="Character details">
+    <AsyncPanel :loading="loading" :error="error" :empty="!character" empty-message="This character is not available.">
+      <section v-if="character" class="character-hero">
+        <div class="character-hero__portrait">
+          <img v-if="character.image_url" :src="character.image_url" :alt="character.name" />
+          <span v-else class="image-fallback image-fallback--large" aria-hidden="true">{{ initials(character.name) }}</span>
         </div>
-      </AsyncPanel>
-      <button v-if="storiesError && !storiesLoading" type="button" class="retry-stories" @click="retryStories">Try stories again</button>
-      <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" @previous="previousStories" @next="nextStories" />
-    </section>
-  </AsyncPanel>
-  <button v-if="error && !loading" type="button" class="retry-button" @click="retryCharacter">Try character again</button>
+        <div class="character-hero__copy">
+          <p class="eyebrow">Character dossier</p>
+          <h1>{{ character.name }}</h1>
+          <p class="lead">{{ excerpt(character.description, 520) }}</p>
+          <p v-if="displayDate(character.modified_at)" class="metadata">Last updated by Marvel: {{ displayDate(character.modified_at) }}</p>
+        </div>
+      </section>
+
+      <section ref="storiesRegion" class="related-section retry-region" tabindex="-1" aria-label="Related stories">
+        <div class="section-heading"><div><p class="eyebrow">Related stories</p><h2>Stories to explore next</h2></div></div>
+        <AsyncPanel :loading="storiesLoading" :error="storiesError" :empty="stories.length === 0" empty-message="No related stories are available for this character.">
+          <div class="story-list">
+            <article v-for="story in stories" :key="story.id" class="story-item">
+              <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>
+              <RouterLink :to="{ name: 'story-comics', params: { id: story.id } }">View comics</RouterLink>
+            </article>
+          </div>
+        </AsyncPanel>
+        <button v-if="storiesError && !storiesLoading" type="button" class="retry-stories" @click="focusRetryRegion($event, storiesRegion); retryStories()">Try stories again</button>
+        <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" @previous="previousStories" @next="nextStories" />
+      </section>
+    </AsyncPanel>
+    <button v-if="error && !loading" type="button" class="retry-button" @click="focusRetryRegion($event, characterRegion); retryCharacter()">Try character again</button>
+  </section>
 </template>
 
 <style scoped>
