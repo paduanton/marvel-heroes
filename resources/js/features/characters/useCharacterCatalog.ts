@@ -7,6 +7,7 @@ import type { Character } from '@/types/catalog';
 export function useCharacterCatalog(router: Router) {
   const route = router.currentRoute;
   const appliedQuery = computed(() => typeof route.value.query.query === 'string' ? route.value.query.query.trim() : '');
+  const queryLength = computed(() => Array.from(appliedQuery.value).length);
   const page = computed(() => {
     const value = route.value.query.page;
     const parsed = typeof value === 'string' && /^[1-9][0-9]*$/.test(value) ? Number(value) : 1;
@@ -15,6 +16,9 @@ export function useCharacterCatalog(router: Router) {
   const draft = ref(appliedQuery.value);
   const perPage = 20;
   const collection = useAsyncCollection<Character>();
+  const canRetry = computed(() => route.value.name === 'characters'
+    && queryLength.value !== 1 && queryLength.value <= 100
+    && !collection.loading.value && !!collection.error.value);
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
   const title = computed(() => appliedQuery.value ? `Results for "${appliedQuery.value}"` : 'Discover Marvel characters');
@@ -51,6 +55,15 @@ export function useCharacterCatalog(router: Router) {
     }
   }
 
+  function loadCatalog() {
+    return collection.load((signal) => listCharacters({ query: appliedQuery.value, page: page.value, perPage }, signal));
+  }
+
+  function retry() {
+    if (disposed || !canRetry.value) return;
+    return loadCatalog();
+  }
+
   watch(
     [() => route.value.name, () => route.value.query.query, () => route.value.query.page],
     () => {
@@ -60,7 +73,7 @@ export function useCharacterCatalog(router: Router) {
         return;
       }
       draft.value = appliedQuery.value;
-      const length = Array.from(appliedQuery.value).length;
+      const length = queryLength.value;
       if (length === 1 || length > 100) {
         collection.reset();
         collection.error.value = length === 1
@@ -68,7 +81,7 @@ export function useCharacterCatalog(router: Router) {
           : 'Search must contain at most 100 characters.';
         return;
       }
-      void collection.load((signal) => listCharacters({ query: appliedQuery.value, page: page.value, perPage }, signal));
+      void loadCatalog();
     },
     { immediate: true },
   );
@@ -78,5 +91,5 @@ export function useCharacterCatalog(router: Router) {
     clearTimeout(debounceTimer);
   });
 
-  return { ...collection, search, page, perPage, title, next, previous };
+  return { ...collection, search, page, perPage, title, next, previous, retry, canRetry };
 }

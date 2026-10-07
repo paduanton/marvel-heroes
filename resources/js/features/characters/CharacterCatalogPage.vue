@@ -5,7 +5,7 @@ import CharacterCard from '@/components/CharacterCard.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { useCharacterCatalog } from './useCharacterCatalog';
 
-const { search, page, perPage, title, items, total, loading, error, next, previous } = useCharacterCatalog(useRouter());
+const { search, page, perPage, title, items, total, loading, error, next, previous, retry, canRetry } = useCharacterCatalog(useRouter());
 </script>
 
 <template>
@@ -28,7 +28,26 @@ const { search, page, perPage, title, items, total, loading, error, next, previo
       <div class="character-grid">
         <CharacterCard v-for="character in items" :key="character.id" :character="character" />
       </div>
-      <PaginationControls :page="page" :per-page="perPage" :total="total" @previous="previous" @next="next" />
     </AsyncPanel>
+    <button v-if="canRetry" type="button" class="retry-catalog" @click="retry">Try characters again</button>
+    <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" @previous="previous" @next="next" />
   </section>
 </template>
+
+<style scoped>
+.retry-catalog {
+  display: block;
+  min-height: 44px;
+  max-width: 100%;
+  margin: 16px auto 0;
+  padding: 9px 14px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #111827;
+}
+
+.retry-catalog:focus-visible {
+  outline: 3px solid #e62429;
+  outline-offset: 3px;
+}
+</style>
