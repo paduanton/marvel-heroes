@@ -24,11 +24,16 @@ export function useStoryComics(storyId: () => string) {
     return load();
   }
 
+  function retry() {
+    if (loading.value || !error.value) return;
+    return load();
+  }
+
   watch(storyId, () => {
     page.value = 1;
     reset();
     void load();
   }, { immediate: true });
 
-  return { comics, total, page, perPage, loading, error, next, previous };
+  return { comics, total, page, perPage, loading, error, next, previous, retry };
 }

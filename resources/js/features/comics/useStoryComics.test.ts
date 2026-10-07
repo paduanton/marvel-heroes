@@ -38,6 +38,88 @@ async function start() {
 }
 
 describe('story comics', () => {
+  it('keeps repeated page failures visible and can return to the previous page', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    api.defaults.adapter = async (config) => {
+      const response = await respond(config);
+      if (config.params.page === 2) throw new Error('Offline');
+      return response;
+    };
+    const { comics } = await start();
+    await comics.next();
+    await comics.retry();
+    expect(comics.page.value).toBe(2);
+    expect(comics.error.value).toBe('Unable to load the catalog right now.');
+    expect(comics.loading.value).toBe(false);
+    expect(comics.total.value).toBe(60);
+    expect(requests.filter((request) => request.page === 2)).toHaveLength(2);
+    await comics.previous();
+    expect(comics.page.value).toBe(1);
+    expect(comics.error.value).toBeNull();
+    expect(comics.comics.value[0].title).toBe('/stories/1/comics');
+  });
+
+  it('does not retry a collection without an error', async () => {
+    const { comics } = await start();
+    await comics.retry();
+    expect(requests).toHaveLength(1);
+    expect(comics.loading.value).toBe(false);
+  });
+
+  it('ignores repeated retry actions during loading', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    let attempts = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    api.defaults.adapter = async (config) => {
+      const response = await respond(config);
+      attempts += 1;
+      if (attempts === 1) throw new Error('Offline');
+      await gate;
+      return response;
+    };
+    const { comics } = await start();
+    const retry = comics.retry();
+    await setImmediate();
+    try {
+      expect(comics.loading.value).toBe(true);
+      expect(comics.error.value).toBeNull();
+      comics.retry();
+      await setImmediate();
+      expect(attempts).toBe(2);
+      expect(comics.page.value).toBe(1);
+    } finally {
+      release();
+      await retry;
+      await setImmediate();
+    }
+    expect(comics.loading.value).toBe(false);
+    expect(comics.error.value).toBeNull();
+  });
+
+  it.each([1, 2])('retries failed comic page %i for the same story', async (page) => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    let failed = false;
+    api.defaults.adapter = async (config) => {
+      const response = await respond(config);
+      if (config.params.page === page && !failed) {
+        failed = true;
+        throw new Error('Offline');
+      }
+      return response;
+    };
+    const { comics } = await start();
+    if (page === 2) await comics.next();
+    expect(comics.error.value).toBe('Unable to load the catalog right now.');
+    const before = requests.length;
+    await comics.retry();
+    expect(comics.page.value).toBe(page);
+    expect(comics.comics.value[0].title).toBe('/stories/1/comics');
+    expect(comics.error.value).toBeNull();
+    expect(comics.loading.value).toBe(false);
+    expect(requests.slice(before)).toEqual([{ url: '/stories/1/comics', page, per_page: 20 }]);
+  });
+
   it('keeps pagination within the loaded collection bounds', async () => {
     const { comics } = await start();
     await comics.previous();
