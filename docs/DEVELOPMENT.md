@@ -75,6 +75,8 @@ The separate `useCharacterDetail.retry.test.ts` suite covers manual story retrie
 
 `useStoryComics.test.ts` also covers manual retries on first/later comic pages, actions without an error or during loading, and recovery via previous-page navigation after repeated failures. Button/pagination rendering and keyboard focus still require mounted-page or browser validation.
 
+`useCharacterCatalog.test.ts` covers manual catalog retries with the applied URL parameters, local-validation and loading guards, preserved back navigation, and an in-progress retry superseded by the draft search's debounce. These tests use memory history and simulated HTTP; they do not verify the rendered retry button or keyboard focus.
+
 ## Cache warmup
 
 ```powershell
