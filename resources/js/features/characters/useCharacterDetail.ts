@@ -45,6 +45,11 @@ export function useCharacterDetail(characterId: () => string) {
     return loadStoriesPage(characterId());
   }
 
+  function retryStories() {
+    if (storiesLoading.value || !storiesError.value) return;
+    return loadStoriesPage(characterId());
+  }
+
   function previousStories() {
     if (storiesLoading.value || storiesPage.value <= 1) return;
     storiesPage.value -= 1;
@@ -59,5 +64,5 @@ export function useCharacterDetail(characterId: () => string) {
     void loadStoriesPage(id);
   }, { immediate: true });
   return { character, stories, loading, error, storiesLoading, storiesError,
-    storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories };
+    storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories, retryStories };
 }
