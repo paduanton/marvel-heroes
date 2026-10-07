@@ -71,6 +71,8 @@ pnpm run test
 
 The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, character search/navigation, character detail and story comics loading. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. The comics suite uses a reactive story ID and Vue effect scope to verify reloads on ID changes, pagination bounds, cancellation, late responses, empty results, error recovery and disposal. The detail suite verifies independent character/story loading and errors, ID changes, cancellation, obsolete responses, disposal, recovery and empty stories through the composable's exposed state. Its pagination tests cover story-only requests, page bounds, actions during loading, resets on character changes and recovery from a failed page. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation and status rendering, accessibility and responsive visual behavior still require dedicated coverage. Passing these tests or the build is not evidence of complete browser workflows.
 
+The separate `useCharacterDetail.retry.test.ts` suite covers manual story retries on the first and subsequent pages, preservation of the character and pagination, redundant-action guards, repeated failure and cancellation on character changes or disposal. It uses the same simulated HTTP boundary and does not verify button rendering, focus behavior or browser interaction.
+
 ## Cache warmup
 
 ```powershell
