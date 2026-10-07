@@ -4,7 +4,7 @@ import pluginVue from 'eslint-plugin-vue';
 
 export default [
     {
-        ignores: ['node_modules/**', 'public/build/**', 'vendor/**'],
+        ignores: ['node_modules/**', 'public/build/**', 'vendor/**', 'playwright-report/**', 'test-results/**'],
     },
     ...pluginVue.configs['flat/recommended'],
     {
@@ -15,7 +15,7 @@ export default [
         },
     },
     {
-        files: ['resources/js/**/*.ts'],
+        files: ['resources/js/**/*.ts', 'tests/e2e/**/*.ts', 'playwright.config.ts'],
         languageOptions: {
             parser: tsParser,
             parserOptions: {
