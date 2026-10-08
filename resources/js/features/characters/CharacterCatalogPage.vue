@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import CharacterCard from '@/components/CharacterCard.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
-import { focusRetryRegion } from '@/utils/focus';
+import { focusActivatedRegion } from '@/utils/focus';
 import { useCharacterCatalog } from './useCharacterCatalog';
 
 const { search, page, perPage, title, items, total, loading, error, next, previous, retry, canRetry } = useCharacterCatalog(useRouter());
@@ -32,8 +32,8 @@ const resultsRegion = ref<HTMLElement | null>(null);
         <CharacterCard v-for="character in items" :key="character.id" :character="character" />
       </div>
     </AsyncPanel>
-    <button v-if="canRetry" type="button" class="retry-catalog" @click="focusRetryRegion($event, resultsRegion); retry()">Try characters again</button>
-    <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" @previous="previous" @next="next" />
+    <button v-if="canRetry" type="button" class="retry-catalog" @click="focusActivatedRegion($event, resultsRegion); retry()">Try characters again</button>
+    <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" :focus-target="resultsRegion" @previous="previous" @next="next" />
   </section>
 </template>
 

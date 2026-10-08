@@ -5,7 +5,7 @@ import AsyncPanel from '@/components/AsyncPanel.vue';
 import CatalogImage from '@/components/CatalogImage.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { excerpt } from '@/utils/formatters';
-import { focusRetryRegion } from '@/utils/focus';
+import { focusActivatedRegion } from '@/utils/focus';
 import { useStoryComics } from './useStoryComics';
 
 const props = defineProps<{ id: string }>();
@@ -25,8 +25,8 @@ const { comics, total, page, perPage, loading, error, next, previous, retry } = 
         </article>
       </section>
     </AsyncPanel>
-    <button v-if="error && !loading" type="button" class="retry-comics" @click="focusRetryRegion($event, resultsRegion); retry()">Try comics again</button>
-    <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" @previous="previous" @next="next" />
+    <button v-if="error && !loading" type="button" class="retry-comics" @click="focusActivatedRegion($event, resultsRegion); retry()">Try comics again</button>
+    <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" :focus-target="resultsRegion" @previous="previous" @next="next" />
   </section>
 </template>
 

@@ -1,4 +1,4 @@
-export function focusRetryRegion(event: MouseEvent, region: HTMLElement | null): void {
+export function focusActivatedRegion(event: MouseEvent, region: HTMLElement | null): void {
   if (document.activeElement === event.currentTarget) {
     region?.focus({ preventScroll: true });
   }

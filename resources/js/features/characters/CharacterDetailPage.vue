@@ -5,7 +5,7 @@ import AsyncPanel from '@/components/AsyncPanel.vue';
 import CatalogImage from '@/components/CatalogImage.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { displayDate, excerpt, initials } from '@/utils/formatters';
-import { focusRetryRegion } from '@/utils/focus';
+import { focusActivatedRegion } from '@/utils/focus';
 import { useCharacterDetail } from './useCharacterDetail';
 
 const props = defineProps<{ id: string }>();
@@ -41,11 +41,11 @@ const { character, stories, loading, error, retryCharacter, storiesLoading, stor
             </article>
           </div>
         </AsyncPanel>
-        <button v-if="storiesError && !storiesLoading" type="button" class="retry-stories" @click="focusRetryRegion($event, storiesRegion); retryStories()">Try stories again</button>
-        <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" @previous="previousStories" @next="nextStories" />
+        <button v-if="storiesError && !storiesLoading" type="button" class="retry-stories" @click="focusActivatedRegion($event, storiesRegion); retryStories()">Try stories again</button>
+        <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" :focus-target="storiesRegion" @previous="previousStories" @next="nextStories" />
       </section>
     </AsyncPanel>
-    <button v-if="error && !loading" type="button" class="retry-button" @click="focusRetryRegion($event, characterRegion); retryCharacter()">Try character again</button>
+    <button v-if="error && !loading" type="button" class="retry-button" @click="focusActivatedRegion($event, characterRegion); retryCharacter()">Try character again</button>
   </section>
 </template>
 
