@@ -10,6 +10,9 @@ button { cursor: pointer; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; color: #fff; background: #e62429; font-size: 12px; }
 .topbar nav a { color: #cbd5e1; font-size: 14px; }.topbar nav a.router-link-active { color: #fff; }
 .content { max-width: 1240px; margin: auto; padding: 48px 28px 80px; }
+.skip-link { position: fixed; top: 12px; left: 12px; right: 12px; z-index: 100; max-width: calc(100% - 24px); padding: 12px 16px; transform: translateY(-200%); background: #fff; color: #111827; border: 1px solid #111827; }
+.skip-link:focus { transform: translateY(0); outline: 3px solid #e62429; outline-offset: 3px; }
+.content:focus-visible { outline: 3px solid #e62429; outline-offset: -3px; }
 .catalog-hero { color: #fff; max-width: 700px; padding: 24px 0 78px; }.catalog-hero--compact { padding-bottom: 46px; }
 .eyebrow { margin: 0 0 10px; color: #e62429; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
 h1, h2, h3, p { margin-top: 0; } h1 { max-width: 720px; margin-bottom: 16px; font-size: clamp(2.3rem, 5vw, 4.7rem); line-height: 1; letter-spacing: 0; } h2 { letter-spacing: 0; } .lead { color: #cbd5e1; font-size: 18px; line-height: 1.65; }
