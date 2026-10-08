@@ -7,6 +7,9 @@ const navigationStart = ref<HTMLElement | null>(null);
 const mainContent = ref<HTMLElement | null>(null);
 
 watch(() => route.path, () => navigationStart.value?.focus({ preventScroll: true }), { flush: 'post' });
+watch(() => route.meta.title, (title) => {
+  document.title = typeof title === 'string' ? `${title} | Marvel Heroes` : 'Marvel Heroes';
+}, { immediate: true });
 </script>
 
 <template>
