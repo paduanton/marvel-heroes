@@ -17,3 +17,15 @@ defineProps<{ character: Character }>();
     </div>
   </article>
 </template>
+
+<style scoped>
+@media (prefers-reduced-motion: reduce) {
+  .character-card :deep(img) {
+    transition: none;
+  }
+
+  .character-card:hover :deep(img) {
+    transform: none;
+  }
+}
+</style>
