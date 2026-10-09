@@ -1,6 +1,6 @@
 import { isCancel } from 'axios';
 import { api, CatalogApiError } from './api';
-import type { ApiCollection, ApiResource, Character, Comic, Story } from '@/types/catalog';
+import type { CharacterCollection, CharacterResource, ComicCollection, StoryCollection } from '@/types/catalog';
 
 function query(params: Record<string, string | number | undefined>) {
   return Object.fromEntries(Object.entries(params).filter(([, value]) => value !== undefined && value !== ''));
@@ -8,7 +8,7 @@ function query(params: Record<string, string | number | undefined>) {
 
 export async function listCharacters(params: { query?: string; page: number; perPage: number }, signal?: AbortSignal) {
   try {
-    const response = await api.get<ApiCollection<Character>>('/characters', {
+    const response = await api.get<CharacterCollection>('/characters', {
       params: query({ query: params.query, page: params.page, per_page: params.perPage }),
       signal,
     });
@@ -21,7 +21,7 @@ export async function listCharacters(params: { query?: string; page: number; per
 
 export async function getCharacter(id: string | number, signal?: AbortSignal) {
   try {
-    const response = await api.get<ApiResource<Character>>(`/characters/${id}`, { signal });
+    const response = await api.get<CharacterResource>(`/characters/${id}`, { signal });
     return response.data.data;
   } catch (error) {
     if (isCancel(error)) throw error;
@@ -31,7 +31,7 @@ export async function getCharacter(id: string | number, signal?: AbortSignal) {
 
 export async function listStories(characterId: string | number, params: { page: number; perPage: number }, signal?: AbortSignal) {
   try {
-    const response = await api.get<ApiCollection<Story>>(`/characters/${characterId}/stories`, {
+    const response = await api.get<StoryCollection>(`/characters/${characterId}/stories`, {
       params: query({ page: params.page, per_page: params.perPage }), signal,
     });
     return response.data;
@@ -43,7 +43,7 @@ export async function listStories(characterId: string | number, params: { page: 
 
 export async function listComics(storyId: string | number, params: { page: number; perPage: number }, signal?: AbortSignal) {
   try {
-    const response = await api.get<ApiCollection<Comic>>(`/stories/${storyId}/comics`, {
+    const response = await api.get<ComicCollection>(`/stories/${storyId}/comics`, {
       params: query({ page: params.page, per_page: params.perPage }), signal,
     });
     return response.data;

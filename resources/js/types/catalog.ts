@@ -1,42 +1,15 @@
-export interface Character {
-  id: number;
-  name: string;
-  description: string | null;
-  modified_at: string | null;
-  image_url: string | null;
-}
+import type { components } from './generated/api';
 
-export interface Story {
-  id: number;
-  title: string;
-  type: string | null;
-  modified_at: string | null;
-  counts: { creators: number; characters: number; comics: number; events: number };
-}
-
-export interface Comic {
-  id: number;
-  digital_id: number | null;
-  title: string;
-  description: string | null;
-  format: string | null;
-  modified_at: string | null;
-  on_sale_at: string | null;
-  digital_price: number | null;
-  image_url: string | null;
-}
-
-export interface PageMeta {
-  page: number;
-  per_page: number;
-  total: number;
-}
+export type Character = components['schemas']['Character'];
+export type Story = components['schemas']['Story'];
+export type Comic = components['schemas']['Comic'];
+export type PageMeta = components['schemas']['Meta'];
+export type CharacterResource = components['schemas']['CharacterResource'];
+export type CharacterCollection = components['schemas']['CharacterCollection'];
+export type StoryCollection = components['schemas']['StoryCollection'];
+export type ComicCollection = components['schemas']['ComicCollection'];
 
 export interface ApiCollection<T> {
   data: T[];
   meta: PageMeta;
-}
-
-export interface ApiResource<T> {
-  data: T;
 }

@@ -2,6 +2,8 @@
     "private": true,
     "packageManager": "pnpm@11.19.0",
     "scripts": {
+        "types:generate": "openapi-typescript docs/openapi.yaml -o resources/js/types/generated/api.d.ts",
+        "types:check": "openapi-typescript docs/openapi.yaml -o resources/js/types/generated/api.d.ts --check",
         "dev": "vite",
         "build": "vue-tsc --noEmit && vite build",
         "test": "vitest run --config vitest.config.ts",
