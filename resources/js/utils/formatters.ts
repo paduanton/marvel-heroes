@@ -1,5 +1,5 @@
-export function excerpt(value: string | null, length = 150): string {
-  if (!value) return 'No official description is available for this character.';
+export function excerpt(value: string | null, length = 150, fallback = 'No official description is available for this character.'): string {
+  if (!value) return fallback;
   return value.length > length ? `${value.slice(0, length).trimEnd()}...` : value;
 }
 
