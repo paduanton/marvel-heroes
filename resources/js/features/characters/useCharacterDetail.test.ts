@@ -1,5 +1,5 @@
 import { setImmediate } from 'node:timers/promises';
-import type { AxiosAdapter, GenericAbortSignal } from 'axios';
+import { AxiosError, type AxiosAdapter, type GenericAbortSignal } from 'axios';
 import { effectScope, ref, type EffectScope } from 'vue';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { api } from '@/services/api';
@@ -272,14 +272,17 @@ describe('character detail', () => {
     const respond = api.defaults.adapter as AxiosAdapter;
     api.defaults.adapter = async (config) => {
       if (config.url === '/characters/1') {
-        throw { response: { status: 404, data: { code: 'not-found', detail: 'Character not found.' } } };
+        throw new AxiosError('Not found', undefined, config, undefined, {
+          config, headers: {}, status: 404, statusText: 'Not Found',
+          data: { code: 'resource-not-found', detail: 'Character not found.' },
+        });
       }
       if (config.url === '/characters/1/stories') throw new Error('Offline');
       return respond(config);
     };
     const { detail, characterId } = await start();
     expect(detail.character.value).toBeNull();
-    expect(detail.error.value).toBe('Character not found.');
+    expect(detail.error.value).toBe('This catalog item is not available.');
     expect(detail.storiesError.value).toBe('Unable to load the catalog right now.');
     expect(detail.loading.value).toBe(false);
     expect(detail.storiesLoading.value).toBe(false);

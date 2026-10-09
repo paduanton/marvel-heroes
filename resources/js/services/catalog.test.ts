@@ -38,7 +38,7 @@ describe('catalog requests', () => {
     await expect(load(controller.signal)).rejects.toBeInstanceOf(CanceledError);
   });
 
-  it.each(requests)('keeps HTTP problem details for $resource', async ({ load }) => {
+  it.each(requests)('maps HTTP problems for $resource', async ({ load }) => {
     api.defaults.adapter = async (config) => {
       throw new AxiosError('Request failed', AxiosError.ERR_BAD_RESPONSE, config, undefined, {
         config,
@@ -54,7 +54,7 @@ describe('catalog requests', () => {
     expect(failure).toMatchObject({
       status: 502,
       code: 'upstream-unavailable',
-      message: 'Catalog is temporarily unavailable.',
+      message: 'Catalog is temporarily unavailable. Please try again later.',
     });
   });
 
