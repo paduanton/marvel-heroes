@@ -28,11 +28,11 @@ final class MarvelPayloadNormalizer
             'type' => $this->nullableString($item['type'] ?? null),
             'modified_at' => $this->nullableDate($item['modified'] ?? null),
             'counts' => [
-                'creators' => (int) data_get($item, 'creators.available', 0),
-                'series' => (int) data_get($item, 'series.available', 0),
-                'characters' => (int) data_get($item, 'characters.available', 0),
-                'comics' => (int) data_get($item, 'comics.available', 0),
-                'events' => (int) data_get($item, 'events.available', 0),
+                'creators' => $this->nonnegativeCount(data_get($item, 'creators.available')),
+                'series' => $this->nonnegativeCount(data_get($item, 'series.available')),
+                'characters' => $this->nonnegativeCount(data_get($item, 'characters.available')),
+                'comics' => $this->nonnegativeCount(data_get($item, 'comics.available')),
+                'events' => $this->nonnegativeCount(data_get($item, 'events.available')),
             ],
         ];
     }
@@ -42,7 +42,7 @@ final class MarvelPayloadNormalizer
     {
         return [
             'id' => $this->recordId($item['id'] ?? null),
-            'digital_id' => (int) ($item['digitalId'] ?? 0) ?: null,
+            'digital_id' => $this->digitalId($item['digitalId'] ?? null),
             'title' => $this->recordLabel($item['title'] ?? null),
             'description' => $this->nullableString($item['description'] ?? null),
             'format' => $this->nullableString($item['format'] ?? null),
@@ -126,7 +126,7 @@ final class MarvelPayloadNormalizer
         foreach ($prices as $price) {
             if (is_array($price) && ($price['type'] ?? null) === $type && is_numeric($price['price'] ?? null)) {
                 $amount = (float) $price['price'];
-                if (is_finite($amount)) {
+                if (is_finite($amount) && $amount >= 0) {
                     return $amount;
                 }
             }
@@ -161,5 +161,15 @@ final class MarvelPayloadNormalizer
     private function nullableString(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' ? trim($value) : null;
+    }
+
+    private function nonnegativeCount(mixed $value): int
+    {
+        return is_int($value) && $value >= 0 ? $value : 0;
+    }
+
+    private function digitalId(mixed $value): ?int
+    {
+        return is_int($value) && $value > 0 ? $value : null;
     }
 }
