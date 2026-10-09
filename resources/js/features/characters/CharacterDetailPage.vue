@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
+import { catalogReturnQuery } from './catalogNavigation';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import CatalogImage from '@/components/CatalogImage.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
@@ -9,6 +10,7 @@ import { focusActivatedRegion } from '@/utils/focus';
 import { useCharacterDetail } from './useCharacterDetail';
 
 const props = defineProps<{ id: string }>();
+const route = useRoute();
 const characterRegion = ref<HTMLElement | null>(null);
 const storiesRegion = ref<HTMLElement | null>(null);
 const { character, stories, loading, error, retryCharacter, storiesLoading, storiesError,
@@ -16,7 +18,7 @@ const { character, stories, loading, error, retryCharacter, storiesLoading, stor
 </script>
 
 <template>
-  <RouterLink class="back-link" to="/">Back to characters</RouterLink>
+  <RouterLink class="back-link" :to="{ name: 'characters', query: catalogReturnQuery(route.query) }">Back to characters</RouterLink>
   <section ref="characterRegion" class="retry-region" tabindex="-1" aria-label="Character details">
     <AsyncPanel :loading="loading" :error="error" :empty="!character" empty-message="This character is not available.">
       <section v-if="character" class="character-hero">
@@ -37,7 +39,7 @@ const { character, stories, loading, error, retryCharacter, storiesLoading, stor
           <div class="story-list">
             <article v-for="story in stories" :key="story.id" class="story-item">
               <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>
-              <RouterLink :to="{ name: 'story-comics', params: { id: story.id } }">View comics</RouterLink>
+              <RouterLink :to="{ name: 'story-comics', params: { id: story.id }, query: { ...catalogReturnQuery(route.query), character: props.id } }">View comics</RouterLink>
             </article>
           </div>
         </AsyncPanel>

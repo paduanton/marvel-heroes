@@ -60,7 +60,7 @@ test('discovers a character and paginates its related stories and comics', async
   await page.screenshot({ path: testInfo.outputPath('character.png'), fullPage: true });
 
   await stories.getByRole('link', { name: 'View comics', exact: true }).click();
-  await expect(page).toHaveURL(/\/stories\/101\/comics$/);
+  await expect(page).toHaveURL(/\/stories\/101\/comics\?character=1$/);
   await expect(page.getByRole('heading', { name: 'Related comics', exact: true })).toBeVisible();
   const comics = page.getByRole('region', { name: 'Comic results', exact: true });
   await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();

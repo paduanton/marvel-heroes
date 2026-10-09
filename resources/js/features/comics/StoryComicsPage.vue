@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { RouterLink } from 'vue-router';
+import { computed, ref } from 'vue';
+import { RouterLink, useRoute } from 'vue-router';
+import { catalogReturnQuery, returnCharacterId } from '@/features/characters/catalogNavigation';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import CatalogImage from '@/components/CatalogImage.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
@@ -9,12 +10,17 @@ import { focusActivatedRegion } from '@/utils/focus';
 import { useStoryComics } from './useStoryComics';
 
 const props = defineProps<{ id: string }>();
+const route = useRoute();
+const characterId = computed(() => returnCharacterId(route.query));
 const resultsRegion = ref<HTMLElement | null>(null);
 const { comics, total, page, perPage, loading, error, next, previous, retry } = useStoryComics(() => props.id);
 </script>
 
 <template>
-  <RouterLink class="back-link" to="/">Back to characters</RouterLink>
+  <nav class="discovery-return" aria-label="Return navigation">
+    <RouterLink v-if="characterId" class="back-link" :to="{ name: 'character-detail', params: { id: characterId }, query: catalogReturnQuery(route.query) }">Back to character</RouterLink>
+    <RouterLink class="back-link" :to="{ name: 'characters', query: catalogReturnQuery(route.query) }">Back to characters</RouterLink>
+  </nav>
   <section class="catalog-hero catalog-hero--compact"><p class="eyebrow">Story library</p><h1>Related comics</h1><p class="lead">Browse the comic issues attached to this Marvel story.</p></section>
   <section ref="resultsRegion" class="retry-region" tabindex="-1" aria-label="Comic results">
     <AsyncPanel :loading="loading" :error="error" :empty="comics.length === 0" empty-message="No comics are available for this story.">
@@ -31,6 +37,8 @@ const { comics, total, page, perPage, loading, error, next, previous, retry } = 
 </template>
 
 <style scoped>
+.discovery-return { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+
 .retry-comics {
   display: block;
   min-height: 44px;

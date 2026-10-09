@@ -28,7 +28,7 @@ test('restarts keyboard navigation after page changes and browser history naviga
   await page.goto('/');
   const destinations = [
     { link: 'Spider-Man', url: /\/characters\/1$/, heading: 'Spider-Man' },
-    { link: 'View comics', url: /\/stories\/101\/comics$/, heading: 'Related comics' },
+    { link: 'View comics', url: /\/stories\/101\/comics\?character=1$/, heading: 'Related comics' },
     { link: 'Characters', url: /\/$/, heading: 'Discover Marvel characters' },
   ];
   const skipLink = page.getByRole('link', { name: 'Skip to main content', exact: true });
