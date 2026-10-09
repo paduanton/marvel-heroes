@@ -43,6 +43,21 @@ export function useCharacterCatalog(router: Router) {
     },
   });
 
+  function submitSearch() {
+    if (disposed || route.value.name !== 'characters') return;
+    clearTimeout(debounceTimer);
+    const query = draft.value.trim();
+    if (query === appliedQuery.value) return;
+    return navigate(query, 1);
+  }
+
+  function clearSearch() {
+    if (disposed || route.value.name !== 'characters') return;
+    clearTimeout(debounceTimer);
+    draft.value = '';
+    if (appliedQuery.value || page.value > 1) return navigate('', 1);
+  }
+
   function next() {
     if (!disposed && !collection.loading.value && page.value * perPage < collection.total.value) {
       return navigate(appliedQuery.value, page.value + 1);
@@ -91,5 +106,5 @@ export function useCharacterCatalog(router: Router) {
     clearTimeout(debounceTimer);
   });
 
-  return { ...collection, search, page, perPage, title, next, previous, retry, canRetry };
+  return { ...collection, search, page, perPage, title, next, previous, retry, canRetry, submitSearch, clearSearch };
 }

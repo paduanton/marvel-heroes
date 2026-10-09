@@ -50,6 +50,52 @@ async function start(path = '/') {
 }
 
 describe('character catalog navigation', () => {
+  it('applies a draft immediately and cancels its pending debounce', async () => {
+    const catalog = await start('/?query=sp&page=2&source=demo');
+    catalog.search.value = 'iron';
+    await catalog.submitSearch();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(router.currentRoute.value.query).toEqual({ query: 'iron', source: 'demo' });
+    expect(requests.at(-1)).toEqual({ query: 'iron', page: 1, per_page: 20 });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(requests).toHaveLength(2);
+  });
+
+  it('clears the filter immediately without allowing an old draft to reapply', async () => {
+    const catalog = await start('/?query=sp&page=2&source=demo');
+    catalog.search.value = 'iron';
+    await catalog.clearSearch();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(catalog.search.value).toBe('');
+    expect(router.currentRoute.value.query).toEqual({ source: 'demo' });
+    expect(requests.at(-1)).toEqual({ page: 1, per_page: 20 });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(requests).toHaveLength(2);
+  });
+
+  it('does not reload unchanged searches or accept search commands after disposal', async () => {
+    const catalog = await start('/?query=sp');
+    await catalog.submitSearch();
+    expect(requests).toHaveLength(1);
+    scope.stop();
+    await catalog.clearSearch();
+    await catalog.submitSearch();
+    await vi.advanceTimersByTimeAsync(300);
+    expect(router.currentRoute.value.query).toEqual({ query: 'sp' });
+    expect(requests).toHaveLength(1);
+  });
+
+  it('clears an unapplied draft on an unfiltered later page back to page one', async () => {
+    const catalog = await start('/?page=2&source=demo');
+    catalog.search.value = 'iron';
+    await catalog.clearSearch();
+    await vi.advanceTimersByTimeAsync(300);
+    expect(router.currentRoute.value.query).toEqual({ source: 'demo' });
+    expect(catalog.search.value).toBe('');
+    expect(requests.at(-1)).toEqual({ page: 1, per_page: 20 });
+    expect(requests).toHaveLength(2);
+  });
+
   it('preserves back navigation after retrying a later page', async () => {
     const respond = api.defaults.adapter as AxiosAdapter;
     let failed = false;
