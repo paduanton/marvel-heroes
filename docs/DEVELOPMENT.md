@@ -58,24 +58,36 @@ The containers share an isolated network namespace with no external access or pu
 
 The suite verifies cold-cache contention, ownership-safe lock release, stale responses during refresh, reuse of the refreshed entry, and a shared budget across concurrent queries. It also covers two request windows longer than the old 15-second lease: a higher timeout and more HTTP attempts. Workers coordinate through process input/output; the two lease regressions additionally wait 16 real seconds to cross the former Redis expiry boundary. Expect the full integration suite to take roughly one minute locally. The simulated clock advances normally even when shifted forward to age an entry, preserving Laravel's lock timeout behavior. Missing `TEST_REDIS_HOST` skips these tests; a configured but unreachable instance fails them.
 
-These are functional concurrency checks, not a load test. HTTP responses remain simulated: the tests verify that the configured window keeps contenders out beyond the former lease, not that the transport enforces real timeouts. They do not validate refreshes exceeding the newly calculated lease, process crashes, Redis outages, or real Marvel timing and responses. See [refresh lock duration](ARCHITECTURE.md#refresh-lock-duration) for the calculation, configuration requirements and remaining limits.
+These are functional concurrency checks, not a load test. HTTP responses remain simulated: the tests verify that the configured window keeps contenders out beyond the former lease, not that the transport enforces real timeouts. Resource reuse, failed-refresh recovery and negative-cache expiry are checked across separate PHP processes. A terminated-owner scenario waits for the default lease to expire, then verifies recovery without refunding its spent budget; this adds a real-time wait to the suite. It does not validate refreshes exceeding their lease, every crash scenario, Redis outages, or real Marvel timing and responses. See [refresh lock duration](ARCHITECTURE.md#refresh-lock-duration) for the calculation, configuration requirements and remaining limits.
 
 ## Frontend validation
 
 ```powershell
 pnpm install --frozen-lockfile
+pnpm run types:check
 pnpm run build
 pnpm run lint
 pnpm run test
 ```
 
-The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, character search/navigation, character detail and story comics loading. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. The comics suite uses a reactive story ID and Vue effect scope to verify reloads on ID changes, pagination bounds, cancellation, late responses, empty results, error recovery and disposal. The detail suite verifies independent character/story loading and errors, ID changes, cancellation, obsolete responses, disposal, recovery and empty stories through the composable's exposed state. Its pagination tests cover story-only requests, page bounds, actions during loading, resets on character changes and recovery from a failed page. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation and status rendering, accessibility and responsive visual behavior still require dedicated coverage. Passing these tests or the build is not evidence of complete browser workflows.
+`resources/js/types/generated/api.d.ts` is generated from the local `docs/openapi.yaml`. After an approved contract change, run `pnpm run types:generate`, review the generated diff and run `types:check` before build/tests. Do not edit generated declarations by hand. A passing type check verifies static alignment, not runtime response validation. The Docker frontend build currently consumes committed declarations; the separate `types:check` command needs the contract file.
+
+The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, character search/navigation, character detail and story comics loading. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. The comics suite uses a reactive story ID and Vue effect scope to verify reloads on ID changes, pagination bounds, cancellation, late responses, empty results, error recovery and disposal. The detail suite verifies independent character/story loading and errors, ID changes, cancellation, obsolete responses, disposal, recovery and empty stories through the composable's exposed state. Its pagination tests cover story-only requests, page bounds, actions during loading, resets on character changes and recovery from a failed page. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation, status rendering, keyboard accessibility and responsive visual behavior are checked separately by the browser suite below. Passing unit tests or the build alone is not evidence of complete browser workflows.
 
 The separate `useCharacterDetail.retry.test.ts` suite covers manual story retries on the first and subsequent pages, preservation of the character and pagination, redundant-action guards, repeated failure and cancellation on character changes or disposal. It uses the same simulated HTTP boundary and does not verify button rendering, focus behavior or browser interaction.
 
-`useStoryComics.test.ts` also covers manual retries on first/later comic pages, actions without an error or during loading, and recovery via previous-page navigation after repeated failures. Button/pagination rendering and keyboard focus still require mounted-page or browser validation.
+`useStoryComics.test.ts` also covers manual retries on first/later comic pages, actions without an error or during loading, and recovery via previous-page navigation after repeated failures. Button/pagination rendering and keyboard focus are checked separately by the browser suite below.
 
 `useCharacterCatalog.test.ts` covers manual catalog retries with the applied URL parameters, local-validation and loading guards, preserved back navigation, and an in-progress retry superseded by the draft search's debounce. These tests use memory history and simulated HTTP; they do not verify the rendered retry button or keyboard focus.
+
+### Browser validation
+
+```powershell
+pnpm exec playwright install chromium
+pnpm exec playwright test --workers=2
+```
+
+Alternatively, with Microsoft Edge installed, set `$env:PLAYWRIGHT_CHANNEL = 'msedge'` before running the tests. The suite builds production assets and starts its own test server on port 4173; this is not a development instance of the Laravel API. Requests and image responses are simulated, so no `.env`, Marvel credentials or Redis instance are needed. Desktop, mobile and narrow viewports are configured in `playwright.config.ts`. Do not run another frontend build while this suite is active: both use `public/build`. Screenshots, traces on failure and reports stay in ignored output directories.
 
 ## Cache warmup
 
