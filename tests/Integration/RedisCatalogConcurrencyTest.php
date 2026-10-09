@@ -140,6 +140,99 @@ class RedisCatalogConcurrencyTest extends TestCase
         ];
     }
 
+    #[DataProvider('catalogResources')]
+    public function test_fresh_resources_are_reused_by_another_process(string $path, string $labelPath): void
+    {
+        [$writer, $writerInput] = $this->startRequest(path: $path, name: 'Original');
+        $writerInput->write("start\n");
+        self::assertSame(200, $this->response($writer)['status']);
+
+        [$reader, $readerInput] = $this->startRequest(path: $path, name: 'Must not be fetched');
+        $readerInput->write("start\n");
+        $result = $this->response($reader);
+        self::assertSame(200, $result['status']);
+        self::assertSame('Original', data_get($result['body'], $labelPath));
+        self::assertSame(0, substr_count($reader->getErrorOutput(), 'UPSTREAM'));
+    }
+
+    #[DataProvider('catalogResources')]
+    public function test_failed_refreshes_preserve_stale_data_and_release_the_lock_for_recovery(string $path, string $labelPath): void
+    {
+        [$seed, $seedInput] = $this->startRequest(path: $path, name: 'Original');
+        $seedInput->write("start\n");
+        self::assertSame(200, $this->response($seed)['status']);
+
+        [$failure, $failureInput] = $this->startRequest(path: $path, timeOffset: 31 * 86400, status: 503);
+        $failureInput->write("start\n");
+        $result = $this->response($failure);
+        self::assertSame(200, $result['status']);
+        self::assertSame('Original', data_get($result['body'], $labelPath));
+        self::assertSame(1, substr_count($failure->getErrorOutput(), 'UPSTREAM'));
+
+        [$recovery, $recoveryInput] = $this->startRequest(path: $path, timeOffset: 32 * 86400, name: 'Recovered');
+        $recoveryInput->write("start\n");
+        $result = $this->response($recovery);
+        self::assertSame(200, $result['status']);
+        self::assertSame('Recovered', data_get($result['body'], $labelPath));
+        self::assertSame(1, substr_count($recovery->getErrorOutput(), 'UPSTREAM'));
+    }
+
+    public function test_missing_characters_are_cached_across_processes_and_discovered_after_expiry(): void
+    {
+        $path = '/api/v1/characters/1';
+        [$seed, $seedInput] = $this->startRequest(path: $path, empty: true);
+        $seedInput->write("start\n");
+        self::assertSame(404, $this->response($seed)['status']);
+
+        [$reader, $readerInput] = $this->startRequest(path: $path, name: 'Premature discovery');
+        $readerInput->write("start\n");
+        self::assertSame(404, $this->response($reader)['status']);
+        self::assertSame(0, substr_count($reader->getErrorOutput(), 'UPSTREAM'));
+
+        [$refresh, $refreshInput] = $this->startRequest(path: $path, timeOffset: 31 * 86400, name: 'Discovered');
+        $refreshInput->write("start\n");
+        self::assertSame('Discovered', $this->response($refresh)['body']['data']['name']);
+        self::assertSame(1, substr_count($refresh->getErrorOutput(), 'UPSTREAM'));
+    }
+
+    public function test_a_terminated_refresh_owner_recovers_after_its_lease_without_refunding_its_budget(): void
+    {
+        [$owner, $ownerInput] = $this->startRequest(hold: true, budget: 2);
+        $ownerInput->write("start\n");
+        $this->awaitMarker($owner, 'UPSTREAM');
+        $owner->stop(0);
+
+        [$contender, $contenderInput] = $this->startRequest(budget: 2);
+        $contenderInput->write("start\n");
+        $result = $this->response($contender);
+        self::assertSame(503, $result['status']);
+        self::assertSame('cache-refresh-in-progress', $result['body']['code']);
+        self::assertSame(0, substr_count($contender->getErrorOutput(), 'UPSTREAM'));
+
+        // The default lease is 20 seconds; Redis expiry is real time, not the worker's shifted clock.
+        sleep(21);
+        [$recovery, $recoveryInput] = $this->startRequest(budget: 2, name: 'Recovered');
+        $recoveryInput->write("start\n");
+        self::assertSame('Recovered', $this->response($recovery)['body']['data'][0]['name']);
+
+        [$uncached, $uncachedInput] = $this->startRequest(path: '/api/v1/characters?query=other', budget: 2);
+        $uncachedInput->write("start\n");
+        $result = $this->response($uncached);
+        self::assertSame(503, $result['status']);
+        self::assertSame('upstream-budget-exhausted', $result['body']['code']);
+        self::assertSame(0, substr_count($uncached->getErrorOutput(), 'UPSTREAM'));
+    }
+
+    public static function catalogResources(): array
+    {
+        return [
+            'characters' => ['/api/v1/characters', 'data.0.name'],
+            'character detail' => ['/api/v1/characters/1', 'data.name'],
+            'stories' => ['/api/v1/characters/1/stories', 'data.0.title'],
+            'comics' => ['/api/v1/stories/1/comics', 'data.0.title'],
+        ];
+    }
+
     /** @return array{Process, InputStream} */
     private function startRequest(
         bool $hold = false,
@@ -149,6 +242,8 @@ class RedisCatalogConcurrencyTest extends TestCase
         int $budget = 2400,
         int $timeout = 5,
         int $attempts = 2,
+        int $status = 200,
+        bool $empty = false,
     ): array {
         $input = new InputStream;
         $process = new Process([
@@ -163,6 +258,8 @@ class RedisCatalogConcurrencyTest extends TestCase
                 'hold' => $hold,
                 'timeout' => $timeout,
                 'attempts' => $attempts,
+                'status' => $status,
+                'empty' => $empty,
             ], JSON_THROW_ON_ERROR),
         ], dirname(__DIR__, 2), timeout: 60);
         $process->setInput($input);

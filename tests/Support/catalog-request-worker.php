@@ -50,9 +50,9 @@ Http::fake(['marvel.test/*' => function () use ($options) {
     }
 
     return Http::response(['data' => [
-        'results' => [['id' => 1, 'name' => $options['name']]],
-        'total' => 1,
-    ]]);
+        'results' => $options['empty'] ? [] : [['id' => 1, 'name' => $options['name'], 'title' => $options['name']]],
+        'total' => $options['empty'] ? 0 : 1,
+    ]], $options['status']);
 }]);
 
 fwrite(STDERR, "READY\n");
