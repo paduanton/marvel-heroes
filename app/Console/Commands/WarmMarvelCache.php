@@ -14,9 +14,9 @@ final class WarmMarvelCache extends Command
     public function handle(ListCharacters $characters): int
     {
         $queries = $this->option('query') ?: config('marvel.warm_queries');
-        foreach (array_unique(array_filter($queries)) as $query) {
+        foreach (array_unique(array_filter($queries, static fn ($query): bool => $query === '' || (bool) $query)) as $query) {
             $characters->handle((string) $query, 1, 20);
-            $this->components->info("Warmed character query: {$query}");
+            $this->components->info($query === '' ? 'Warmed initial character catalog.' : "Warmed character query: {$query}");
         }
 
         return self::SUCCESS;
