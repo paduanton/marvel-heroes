@@ -6,6 +6,7 @@ export function useAsyncCollection<T>() {
   const total = ref(0);
   const loading = ref(false);
   const error = ref<string | null>(null);
+  const stale = ref(false);
   let controller: AbortController | undefined;
   let disposed = false;
 
@@ -13,6 +14,7 @@ export function useAsyncCollection<T>() {
     disposed = true;
     controller?.abort();
     loading.value = false;
+    stale.value = false;
   });
 
   function reset() {
@@ -22,6 +24,7 @@ export function useAsyncCollection<T>() {
     total.value = 0;
     loading.value = false;
     error.value = null;
+    stale.value = false;
   }
 
   async function load(loader: (signal: AbortSignal) => Promise<ApiCollection<T>>) {
@@ -31,11 +34,13 @@ export function useAsyncCollection<T>() {
     controller = request;
     loading.value = true;
     error.value = null;
+    stale.value = false;
     try {
       const result = await loader(request.signal);
       if (request.signal.aborted) return;
       items.value = result.data;
       total.value = result.meta.total;
+      stale.value = result.meta.cache?.state === 'stale';
     } catch (exception) {
       if (!request.signal.aborted && (exception as { name?: string })?.name !== 'CanceledError') {
         error.value = exception instanceof Error ? exception.message : 'Unable to load catalog items.';
@@ -45,5 +50,5 @@ export function useAsyncCollection<T>() {
     }
   }
 
-  return { items, total, loading, error, load, reset };
+  return { items, total, loading, error, stale, load, reset };
 }

@@ -4,7 +4,7 @@ import { listComics } from '@/services/catalog';
 import type { Comic } from '@/types/catalog';
 
 export function useStoryComics(storyId: () => string) {
-  const { items: comics, total, loading, error, load: loadCollection, reset } = useAsyncCollection<Comic>();
+  const { items: comics, total, loading, error, stale, load: loadCollection, reset } = useAsyncCollection<Comic>();
   const page = ref(1);
   const perPage = 20;
 
@@ -35,5 +35,5 @@ export function useStoryComics(storyId: () => string) {
     void load();
   }, { immediate: true });
 
-  return { comics, total, page, perPage, loading, error, next, previous, retry };
+  return { comics, total, page, perPage, loading, error, stale, next, previous, retry };
 }

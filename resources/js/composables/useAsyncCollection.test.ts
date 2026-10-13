@@ -26,6 +26,21 @@ beforeEach(() => {
 afterEach(() => scope.stop());
 
 describe('async catalog collection', () => {
+  it('tracks stale responses including empty collections and clears the state on load, error and reset', async () => {
+    await collection.load(async () => olderResult);
+    expect(collection.stale.value).toBe(true);
+    const pending = deferred<ApiCollection<number>>();
+    const load = collection.load(() => pending.promise);
+    expect(collection.stale.value).toBe(false);
+    pending.reject(new Error('Unavailable'));
+    await load;
+    expect(collection.stale.value).toBe(false);
+    await collection.load(async () => ({ ...olderResult, data: [] }));
+    expect(collection.stale.value).toBe(true);
+    expect(collection.items.value).toEqual([]);
+    collection.reset();
+    expect(collection.stale.value).toBe(false);
+  });
   it('resets existing data and cancels a pending load without accepting its result', async () => {
     await collection.load(async () => olderResult);
     const pending = deferred<ApiCollection<number>>();
@@ -72,6 +87,7 @@ describe('async catalog collection', () => {
     await latestLoad;
     expect(collection.items.value).toEqual([2]);
     expect(collection.total.value).toBe(30);
+    expect(collection.stale.value).toBe(false);
     expect(collection.loading.value).toBe(false);
   });
 
@@ -88,6 +104,7 @@ describe('async catalog collection', () => {
     expect(collection.total.value).toBe(30);
     expect(collection.error.value).toBeNull();
     expect(collection.loading.value).toBe(false);
+    expect(collection.stale.value).toBe(false);
   });
 
   it('ignores an outdated error while the latest request is pending', async () => {

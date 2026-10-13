@@ -13,14 +13,14 @@ const props = defineProps<{ id: string }>();
 const route = useRoute();
 const characterRegion = ref<HTMLElement | null>(null);
 const storiesRegion = ref<HTMLElement | null>(null);
-const { character, stories, loading, error, retryCharacter, storiesLoading, storiesError,
+const { character, characterStale, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
   storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id);
 </script>
 
 <template>
   <RouterLink class="back-link" :to="{ name: 'characters', query: catalogReturnQuery(route.query) }">Back to characters</RouterLink>
   <section ref="characterRegion" class="retry-region" tabindex="-1" aria-label="Character details">
-    <AsyncPanel :loading="loading" :error="error" :empty="!character" empty-message="This character is not available.">
+    <AsyncPanel :loading="loading" :error="error" :stale="characterStale" :empty="!character" empty-message="This character is not available.">
       <section v-if="character" class="character-hero">
         <div class="character-hero__portrait">
           <CatalogImage :src="character.image_url" :alt="character.name" :fallback="initials(character.name)" large loading="eager" />
@@ -35,7 +35,7 @@ const { character, stories, loading, error, retryCharacter, storiesLoading, stor
 
       <section ref="storiesRegion" class="related-section retry-region" tabindex="-1" aria-label="Related stories">
         <div class="section-heading"><div><p class="eyebrow">Related stories</p><h2>Stories to explore next</h2></div></div>
-        <AsyncPanel :loading="storiesLoading" :error="storiesError" :empty="stories.length === 0" empty-message="No related stories are available for this character.">
+        <AsyncPanel :loading="storiesLoading" :error="storiesError" :stale="storiesStale" :empty="stories.length === 0" empty-message="No related stories are available for this character.">
           <div class="story-list">
             <article v-for="story in stories" :key="story.id" class="story-item">
               <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>

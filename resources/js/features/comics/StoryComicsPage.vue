@@ -12,7 +12,7 @@ const props = defineProps<{ id: string }>();
 const route = useRoute();
 const characterId = computed(() => returnCharacterId(route.query));
 const resultsRegion = ref<HTMLElement | null>(null);
-const { comics, total, page, perPage, loading, error, next, previous, retry } = useStoryComics(() => props.id);
+const { comics, total, page, perPage, loading, error, stale, next, previous, retry } = useStoryComics(() => props.id);
 </script>
 
 <template>
@@ -22,7 +22,7 @@ const { comics, total, page, perPage, loading, error, next, previous, retry } = 
   </nav>
   <section class="catalog-hero catalog-hero--compact"><p class="eyebrow">Story library</p><h1>Related comics</h1><p class="lead">Browse the comic issues attached to this Marvel story.</p></section>
   <section ref="resultsRegion" class="retry-region" tabindex="-1" aria-label="Comic results">
-    <AsyncPanel :loading="loading" :error="error" :empty="comics.length === 0" empty-message="No comics are available for this story.">
+    <AsyncPanel :loading="loading" :error="error" :stale="stale" :empty="comics.length === 0" empty-message="No comics are available for this story.">
       <section class="comic-grid">
         <ComicCard v-for="comic in comics" :key="comic.id" :comic="comic" />
       </section>

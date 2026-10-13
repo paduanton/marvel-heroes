@@ -20,6 +20,7 @@ export async function mockCatalog(page: Page) {
   const requests: URL[] = [];
   const characterImages = new Map<number, string>();
   const comicImages = new Map<number, string>();
+  const cacheStates = new Map<string, 'fresh' | 'stale'>();
   await page.route('**/api/v1/**', async route => {
     const url = new URL(route.request().url());
     requests.push(url);
@@ -34,6 +35,7 @@ export async function mockCatalog(page: Page) {
     }
     const currentPage = Number(url.searchParams.get('page') ?? 1);
     const perPage = Number(url.searchParams.get('per_page') ?? 20);
+    const cache = { state: cacheStates.get(url.pathname) ?? 'fresh' };
     let data: unknown;
     let total: number;
     const characters = [spiderMan, ironMan].map(item => ({
@@ -45,7 +47,7 @@ export async function mockCatalog(page: Page) {
       data = query || currentPage === 1 ? filtered : [{ ...spiderMan, id: 3, name: 'Thor' }];
       total = query ? filtered.length : 40;
     } else if (/^\/api\/v1\/characters\/\d+$/.test(url.pathname)) {
-      await route.fulfill({ json: { data: characters[url.pathname.endsWith('/2') ? 1 : 0] } });
+      await route.fulfill({ json: { data: characters[url.pathname.endsWith('/2') ? 1 : 0], meta: { cache } } });
       return;
     } else if (/^\/api\/v1\/characters\/\d+\/stories$/.test(url.pathname)) {
       data = currentPage === 1 ? [story] : [{ ...story, id: 102, title: 'Next adventure' }];
@@ -58,7 +60,7 @@ export async function mockCatalog(page: Page) {
       await route.fulfill({ status: 404, json: {} });
       return;
     }
-    await route.fulfill({ json: { data, meta: { page: currentPage, per_page: perPage, total } } });
+    await route.fulfill({ json: { data, meta: { page: currentPage, per_page: perPage, total, cache } } });
   });
-  return { failures, requests, characterImages, comicImages };
+  return { failures, requests, characterImages, comicImages, cacheStates };
 }

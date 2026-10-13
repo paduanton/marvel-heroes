@@ -22,7 +22,7 @@ export async function listCharacters(params: { query?: string; page: number; per
 export async function getCharacter(id: string | number, signal?: AbortSignal) {
   try {
     const response = await api.get<CharacterResource>(`/characters/${id}`, { signal });
-    return response.data.data;
+    return response.data;
   } catch (error) {
     if (isCancel(error)) throw error;
     throw new CatalogApiError(error);

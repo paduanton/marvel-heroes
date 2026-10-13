@@ -8,7 +8,7 @@ import PaginationControls from '@/components/PaginationControls.vue';
 import { focusActivatedRegion } from '@/utils/focus';
 import { useCharacterCatalog } from './useCharacterCatalog';
 
-const { search, page, perPage, title, items, total, loading, error, next, previous, retry, canRetry, submitSearch, clearSearch } = useCharacterCatalog(useRouter());
+const { search, page, perPage, title, items, total, loading, error, stale, next, previous, retry, canRetry, submitSearch, clearSearch } = useCharacterCatalog(useRouter());
 const resultsRegion = ref<HTMLElement | null>(null);
 const searchInput = ref<HTMLInputElement | null>(null);
 const isComposing = ref(false);
@@ -42,7 +42,7 @@ function submit() {
     <div class="section-heading">
       <p>{{ total }} characters in the archive</p>
     </div>
-    <AsyncPanel :loading="loading" :error="error" :empty="items.length === 0" empty-message="No characters match this search yet.">
+    <AsyncPanel :loading="loading" :error="error" :stale="stale" :empty="items.length === 0" empty-message="No characters match this search yet.">
       <div class="character-grid">
         <CharacterCard v-for="character in items" :key="character.id" :character="character" />
       </div>

@@ -36,6 +36,28 @@ async function start() {
 }
 
 describe('character detail', () => {
+  it('keeps character and story cache states independent and resets them when discovery changes', async () => {
+    const respond = api.defaults.adapter as AxiosAdapter;
+    api.defaults.adapter = async (config) => {
+      const response = await respond(config);
+      const stories = config.url?.endsWith('/stories');
+      const firstCharacter = config.url?.startsWith('/characters/1');
+      response.data.meta = { ...response.data.meta, cache: { state: firstCharacter !== stories ? 'stale' : 'fresh' } };
+      return response;
+    };
+    const { detail, characterId } = await start();
+    expect(detail.characterStale.value).toBe(true);
+    expect(detail.storiesStale.value).toBe(false);
+    characterId.value = '2';
+    await setImmediate();
+    expect(detail.character.value?.id).toBe(2);
+    expect(detail.characterStale.value).toBe(false);
+    expect(detail.storiesStale.value).toBe(true);
+    scope.stop();
+    expect(detail.characterStale.value).toBe(false);
+    expect(detail.storiesStale.value).toBe(false);
+  });
+
   it('keeps a pagination failure isolated from the character and recovers on a previous page', async () => {
     const respond = api.defaults.adapter as AxiosAdapter;
     api.defaults.adapter = async (config) => {

@@ -5,7 +5,8 @@ import type { Character, Story } from '@/types/catalog';
 
 export function useCharacterDetail(characterId: () => string) {
   const character = ref<Character | null>(null);
-  const { items: stories, total: storiesTotal, loading: storiesLoading, error: storiesError, load: loadStories, reset: resetStories } = useAsyncCollection<Story>();
+  const { items: stories, total: storiesTotal, loading: storiesLoading, error: storiesError, stale: storiesStale, load: loadStories, reset: resetStories } = useAsyncCollection<Story>();
+  const characterStale = ref(false);
   const storiesPage = ref(1);
   const storiesPerPage = 10;
   const loading = ref(true);
@@ -17,6 +18,7 @@ export function useCharacterDetail(characterId: () => string) {
     disposed = true;
     controller?.abort();
     loading.value = false;
+    characterStale.value = false;
   });
 
   async function load(id: string) {
@@ -25,9 +27,13 @@ export function useCharacterDetail(characterId: () => string) {
     controller = request;
     loading.value = true;
     error.value = null;
+    characterStale.value = false;
     try {
       const result = await getCharacter(id, request.signal);
-      if (!request.signal.aborted) character.value = result;
+      if (!request.signal.aborted) {
+        character.value = result.data;
+        characterStale.value = result.meta?.cache?.state === 'stale';
+      }
     } catch (exception) {
       if (!request.signal.aborted) {
         error.value = exception instanceof Error ? exception.message : 'Unable to load this character.';
@@ -70,6 +76,6 @@ export function useCharacterDetail(characterId: () => string) {
     void load(id);
     void loadStoriesPage(id);
   }, { immediate: true });
-  return { character, stories, loading, error, retryCharacter, storiesLoading, storiesError,
+  return { character, characterStale, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
     storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories, retryStories };
 }
