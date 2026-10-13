@@ -73,6 +73,7 @@ class RedisCatalogConcurrencyTest extends TestCase
         $result = $this->response($contender);
         self::assertSame(200, $result['status']);
         self::assertSame('Example Hero', $result['body']['data'][0]['name']);
+        self::assertSame('stale', $result['body']['meta']['cache']['state']);
         self::assertSame(0, substr_count($contender->getErrorOutput(), 'UPSTREAM'));
 
         $input->write("release\n");
@@ -152,6 +153,7 @@ class RedisCatalogConcurrencyTest extends TestCase
         $result = $this->response($reader);
         self::assertSame(200, $result['status']);
         self::assertSame('Original', data_get($result['body'], $labelPath));
+        self::assertSame('fresh', $result['body']['meta']['cache']['state']);
         self::assertSame(0, substr_count($reader->getErrorOutput(), 'UPSTREAM'));
     }
 
@@ -167,6 +169,7 @@ class RedisCatalogConcurrencyTest extends TestCase
         $result = $this->response($failure);
         self::assertSame(200, $result['status']);
         self::assertSame('Original', data_get($result['body'], $labelPath));
+        self::assertSame('stale', $result['body']['meta']['cache']['state']);
         self::assertSame(1, substr_count($failure->getErrorOutput(), 'UPSTREAM'));
 
         [$recovery, $recoveryInput] = $this->startRequest(path: $path, timeOffset: 32 * 86400, name: 'Recovered');
@@ -174,6 +177,7 @@ class RedisCatalogConcurrencyTest extends TestCase
         $result = $this->response($recovery);
         self::assertSame(200, $result['status']);
         self::assertSame('Recovered', data_get($result['body'], $labelPath));
+        self::assertSame('fresh', $result['body']['meta']['cache']['state']);
         self::assertSame(1, substr_count($recovery->getErrorOutput(), 'UPSTREAM'));
     }
 

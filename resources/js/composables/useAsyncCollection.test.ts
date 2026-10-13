@@ -13,8 +13,8 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-const olderResult: ApiCollection<number> = { data: [1], meta: { page: 1, per_page: 20, total: 10 } };
-const latestResult: ApiCollection<number> = { data: [2], meta: { page: 1, per_page: 20, total: 30 } };
+const olderResult: ApiCollection<number> = { data: [1], meta: { page: 1, per_page: 20, total: 10, cache: { state: 'stale' } } };
+const latestResult: ApiCollection<number> = { data: [2], meta: { page: 1, per_page: 20, total: 30, cache: { state: 'fresh' } } };
 let scope: EffectScope;
 let collection: ReturnType<typeof useAsyncCollection<number>>;
 

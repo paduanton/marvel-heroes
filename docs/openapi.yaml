@@ -174,11 +174,18 @@ components:
   schemas:
     Meta:
       type: object
-      required: [page, per_page, total]
+      required: [page, per_page, total, cache]
       properties:
         page: { type: integer }
         per_page: { type: integer }
         total: { type: integer }
+        cache: { $ref: '#/components/schemas/CatalogCache' }
+    CatalogCache:
+      type: object
+      required: [state]
+      description: Server cache state at response creation. Fresh includes a successful upstream load; stale means fallback within the existing retention window. Browser caching can reuse this snapshot. This is not the publication or modification date of Marvel content.
+      properties:
+        state: { type: string, enum: [fresh, stale] }
     Character:
       type: object
       required: [id, name, description, modified_at, image_url]
@@ -214,8 +221,14 @@ components:
         image_url: { type: [string, 'null'], format: uri }
     CharacterResource:
       type: object
-      required: [data]
-      properties: { data: { $ref: '#/components/schemas/Character' } }
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/Character' }
+        meta:
+          type: object
+          required: [cache]
+          properties:
+            cache: { $ref: '#/components/schemas/CatalogCache' }
     CharacterCollection:
       type: object
       required: [data, meta]

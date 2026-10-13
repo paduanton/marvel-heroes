@@ -14,7 +14,10 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
 {
     private const REFRESH_OVERHEAD_SECONDS = 5;
 
-    public function __construct(private readonly MarvelCatalogGateway $upstream) {}
+    public function __construct(
+        private readonly MarvelCatalogGateway $upstream,
+        private readonly ?CatalogCacheMetadata $metadata = null,
+    ) {}
 
     public function characters(string $query, int $offset, int $limit): array
     {
@@ -45,7 +48,7 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
         if ($this->isFresh($entry)) {
             Log::debug('marvel.cache_hit', ['resource' => $resource]);
 
-            return $entry['value'];
+            return $this->served($entry['value'], false);
         }
 
         Log::debug('marvel.cache_miss', ['resource' => $resource]);
@@ -55,7 +58,7 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
             $lock->block(2);
             $entry = Cache::get($key);
             if ($this->isFresh($entry)) {
-                return $entry['value'];
+                return $this->served($entry['value'], false);
             }
 
             return $this->refresh($key, $resource, $entry, $resolver);
@@ -63,7 +66,7 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
             if ($this->isStale($entry)) {
                 Log::info('marvel.cache_stale_lock', ['resource' => $resource]);
 
-                return $entry['value'];
+                return $this->served($entry['value'], true);
             }
 
             throw new MarvelRefreshInProgressException('A catalog response is currently being refreshed.');
@@ -96,7 +99,7 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
                     : 'marvel.cache_stale_upstream';
                 Log::warning($event, ['resource' => $resource, 'exception' => $exception::class]);
 
-                return $entry['value'];
+                return $this->served($entry['value'], true);
             }
             throw $exception;
         }
@@ -105,6 +108,13 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
         $staleUntil = now()->addDays((int) config('marvel.cache.stale_days'));
         Cache::put($key, ['value' => $value, 'fresh_until' => $freshUntil->getTimestamp(), 'stale_until' => $staleUntil->getTimestamp()], $staleUntil);
         Log::info('marvel.cache_refreshed', ['resource' => $resource]);
+
+        return $this->served($value, false);
+    }
+
+    private function served(mixed $value, bool $stale): mixed
+    {
+        $this->metadata?->record($stale);
 
         return $value;
     }

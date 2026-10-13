@@ -281,6 +281,12 @@ export interface components {
             page: number;
             per_page: number;
             total: number;
+            cache: components["schemas"]["CatalogCache"];
+        };
+        /** @description Server cache state at response creation. Fresh includes a successful upstream load; stale means fallback within the existing retention window. Browser caching can reuse this snapshot. This is not the publication or modification date of Marvel content. */
+        CatalogCache: {
+            /** @enum {string} */
+            state: "fresh" | "stale";
         };
         Character: {
             id: number;
@@ -317,6 +323,9 @@ export interface components {
         };
         CharacterResource: {
             data: components["schemas"]["Character"];
+            meta: {
+                cache: components["schemas"]["CatalogCache"];
+            };
         };
         CharacterCollection: {
             data: components["schemas"]["Character"][];

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\MarvelController;
+use App\Http\Middleware\CatalogCacheMetadata;
 use App\Modules\Characters\Presentation\Controllers\ListCharactersController;
 use App\Modules\Characters\Presentation\Controllers\ListCharacterStoriesController;
 use App\Modules\Characters\Presentation\Controllers\ShowCharacterController;
@@ -19,7 +20,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 |
 */
 
-Route::prefix('v1')->middleware('throttle:catalog')->group(function () {
+Route::prefix('v1')->middleware(['throttle:catalog', CatalogCacheMetadata::class])->group(function () {
     Route::get('characters', ListCharactersController::class);
     Route::get('characters/{characterId}', ShowCharacterController::class)->whereNumber('characterId');
     Route::get('characters/{characterId}/stories', ListCharacterStoriesController::class)->whereNumber('characterId');

@@ -27,7 +27,7 @@ class CharacterCatalogTest extends TestCase
             $this->getJson($path.'?page=2&per_page=10')
                 ->assertOk()
                 ->assertJsonPath('data', [])
-                ->assertJsonPath('meta', ['page' => 2, 'per_page' => 10, 'total' => 0]);
+                ->assertJsonPath('meta', ['page' => 2, 'per_page' => 10, 'total' => 0, 'cache' => ['state' => 'fresh']]);
         }
     }
 
@@ -65,7 +65,7 @@ class CharacterCatalogTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.0.id', 1009610)
             ->assertJsonPath('data.0.name', 'Spider-Man')
-            ->assertJsonPath('meta', ['page' => 2, 'per_page' => 10, 'total' => 1])
+            ->assertJsonPath('meta', ['page' => 2, 'per_page' => 10, 'total' => 1, 'cache' => ['state' => 'fresh']])
             ->assertHeader('ETag')
             ->assertHeader('X-Request-ID');
     }
