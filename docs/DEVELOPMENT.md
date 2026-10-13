@@ -95,7 +95,15 @@ Alternatively, with Microsoft Edge installed, set `$env:PLAYWRIGHT_CHANNEL = 'ms
 docker compose run --rm app php artisan marvel:cache:warm
 ```
 
-This operator command may call Marvel and consume the configured budget. It uses `MARVEL_WARM_QUERIES`, accepts repeatable `--query` overrides, and reuses fresh cache entries. It does not force refresh and currently skips the empty query, so it does not warm the unfiltered initial catalog.
+This operator command may call Marvel and consume the configured budget. It uses `MARVEL_WARM_QUERIES` unless repeatable `--query` options replace that list, and reuses fresh cache entries without forcing refresh. Without configured queries or explicit overrides, it performs no warmup.
+
+To warm only the unfiltered initial catalog (page one, 20 items), explicitly pass an empty query:
+
+```powershell
+docker compose run --rm app php artisan marvel:cache:warm --query=
+```
+
+Repeat `--query` to include named searches in the same override list. The command does not preload subsequent pages or automatically add the initial catalog to configured searches.
 
 ## Upstream timeout
 
