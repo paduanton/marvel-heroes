@@ -24,6 +24,6 @@ Use `http://localhost:8080/health` para verificar a aplicação. `GET /ready` ta
 
 Os testes PHP usam o target Docker `testing`; a imagem `application` não inclui PHPUnit nem Pint. Os comandos de build, teste e lint estão em [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-A API tem testes com respostas simuladas e uma suíte isolada com Redis real. O frontend usa tipos gerados do OpenAPI, testes unitários e E2E em desktop/mobile com API simulada. Sanctum, a validação com a Marvel real e a exposição do estado stale à interface continuam pendentes. Os comandos e os limites de cada validação estão em [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) e [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+A API tem testes com respostas simuladas e uma suíte isolada com Redis real. O frontend usa tipos gerados do OpenAPI, testes unitários e E2E em desktop/mobile com API simulada, e informa quando uma seção recebe cache stale. Sanctum e a validação com a Marvel real continuam pendentes. Os comandos e os limites de cada validação estão em [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) e [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 Leia [AGENTS.md](AGENTS.md), [CONTEXT.md](CONTEXT.md) e [CONTRIBUTING.md](CONTRIBUTING.md) antes de contribuir. O projeto usa Conventional Commits e não permite staging ou commits sem autorização explícita.
