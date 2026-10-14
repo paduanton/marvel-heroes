@@ -22,12 +22,12 @@ RUN composer install --no-scripts --no-interaction --no-progress --prefer-dist -
 
 FROM php:8.3-fpm-alpine AS application
 
-RUN apk add --no-cache $PHPIZE_DEPS libxml2-dev oniguruma-dev \
+RUN apk add --no-cache $PHPIZE_DEPS libxml2-dev oniguruma-dev postgresql-dev \
     && addgroup -S marvel \
     && adduser -S marvel -G marvel \
     && pecl install redis \
     && docker-php-ext-enable redis \
-    && docker-php-ext-install mbstring opcache xml
+    && docker-php-ext-install mbstring opcache xml pdo_pgsql
 
 WORKDIR /var/www/html
 COPY --from=dependencies --chown=marvel:marvel /app/vendor ./vendor

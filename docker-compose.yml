@@ -10,8 +10,13 @@ services:
       APP_URL: http://localhost:8080
       CACHE_STORE: redis
       REDIS_HOST: redis
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
@@ -58,5 +63,20 @@ services:
     volumes:
       - redis-data:/data
 
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-marvel_identity}
+      POSTGRES_USER: ${DB_USERNAME:-marvel}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the ignored .env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - identity-data:/var/lib/postgresql/data
+
 volumes:
   redis-data:
+  identity-data:

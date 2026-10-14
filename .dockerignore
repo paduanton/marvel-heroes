@@ -11,3 +11,5 @@ storage/framework/views
 storage/framework/cache
 bootstrap/cache/*.php
 public/build
+test-results
+playwright-report
