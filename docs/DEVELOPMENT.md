@@ -122,6 +122,16 @@ docker compose run --rm app php artisan marvel:cache:warm --query=
 
 Repeat `--query` to include named searches in the same override list. The command does not preload subsequent pages or automatically add the initial catalog to configured searches.
 
+Preview the normalized, deduplicated list before executing:
+
+```powershell
+docker compose run --rm app php artisan marvel:cache:warm --query= --query="Spider-Man" --dry-run
+```
+
+`--dry-run` validates and prints the plan without upstream requests or cache changes. Its count is unique queries, not an estimate of quota usage: actual calls depend on fresh cache and bounded retries. Empty queries select the initial catalog; other prefixes must contain 2-100 characters after trimming. The entire list is validated before work starts, and equivalent lowercase queries are executed once.
+
+Execution reports fresh, stale and failed entries separately. Fresh includes reuse of an existing fresh entry; it does not imply an upstream call or forced refresh. Stale fallback emits a warning, not a claim of successful refresh. Known source/budget/lock failures do not prevent later queries from using available cache, and diagnostics remain safe. Exit `0` means every planned query is available (possibly stale), or the plan is empty/dry-run; `1` means at least one query is unavailable; `2` means invalid input with no queries executed.
+
 ## Upstream timeout
 
 `MARVEL_TIMEOUT_SECONDS` must resolve to a positive integer number of seconds (default: `5`). Zero or negative effective values block upstream requests before any HTTP attempt or budget reservation. Existing fresh or valid stale cache can still serve the catalog; an uncached request returns `502` with `upstream-unavailable`, without exposing the configuration error. After correcting local configuration, reload the application/configuration cache as appropriate for the environment. This check runs when the client needs upstream data, not at startup or in `/ready`.
