@@ -5,6 +5,7 @@ const failures = [
   { status: 429, code: 'rate-limit-exceeded', message: 'Too many requests. Please wait before trying again.' },
   { status: 502, code: 'upstream-unavailable', message: 'Catalog is temporarily unavailable. Please try again later.' },
   { status: 503, code: 'upstream-budget-exhausted', message: 'Catalog is temporarily unavailable. Please try again later.' },
+  { status: 503, code: 'dependency-unavailable', message: 'Catalog is temporarily unavailable. Please try again later.' },
   { status: 503, code: 'cache-refresh-in-progress', message: 'Catalog is being refreshed. Please try again shortly.' },
 ];
 

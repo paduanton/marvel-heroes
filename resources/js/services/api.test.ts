@@ -22,6 +22,7 @@ describe('catalog error presentation', () => {
     [429, 'rate-limit-exceeded', 'Too many requests. Please wait before trying again.'],
     [502, 'upstream-unavailable', 'Catalog is temporarily unavailable. Please try again later.'],
     [503, 'upstream-budget-exhausted', 'Catalog is temporarily unavailable. Please try again later.'],
+    [503, 'dependency-unavailable', 'Catalog is temporarily unavailable. Please try again later.'],
     [503, 'cache-refresh-in-progress', 'Catalog is being refreshed. Please try again shortly.'],
   ])('maps HTTP %i / %s to a stable message', (status, code, message) => {
     const error = new CatalogApiError(httpFailure(status as number, {

@@ -7,6 +7,7 @@ const problemMessages = new Map<string, { status: number; message: string }>([
   ['rate-limit-exceeded', { status: 429, message: 'Too many requests. Please wait before trying again.' }],
   ['upstream-unavailable', { status: 502, message: unavailable }],
   ['upstream-budget-exhausted', { status: 503, message: unavailable }],
+  ['dependency-unavailable', { status: 503, message: unavailable }],
   ['cache-refresh-in-progress', { status: 503, message: 'Catalog is being refreshed. Please try again shortly.' }],
 ]);
 
