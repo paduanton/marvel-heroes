@@ -15,11 +15,12 @@ process.on('SIGINT', () => { interrupted = true; tests?.kill(); if (server.conne
 process.on('SIGTERM', () => { interrupted = true; tests?.kill(); if (server.connected) server.send('stop'); });
 
 try {
-  await Promise.race([
+  const [stack] = await Promise.race([
     once(server, 'message'),
     once(server, 'exit').then(() => { throw new Error('Disposable stack exited before startup.'); }),
     setTimeout(120_000, undefined, { ref: false }).then(() => { throw new Error('Disposable stack startup timed out.'); }),
   ]);
+  if (stack?.type !== 'ready') throw new Error('Disposable stack did not confirm startup.');
   let ready = false;
   for (let attempt = 0; attempt < 60 && !interrupted; attempt++) {
     try { ready = (await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1000) })).ok; } catch { /* Wait for HTTP readiness. */ }
@@ -28,7 +29,10 @@ try {
   }
   if (!ready || interrupted) throw new Error('Disposable HTTP service is not ready.');
   tests = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', nginx ? 'playwright.deployment.config.ts' : 'playwright.full-stack.config.ts', ...process.argv.slice(2).filter(argument => argument !== '--' && argument !== '--nginx')], {
-    stdio: 'inherit', env: { ...process.env, FULL_STACK_PORT: port },
+    stdio: 'inherit', env: {
+      ...process.env, FULL_STACK_PORT: port,
+      ...(nginx ? { MARVEL_TEST_RUN: stack.run, MARVEL_TEST_REDIS: stack.redis, MARVEL_TEST_NETWORK: stack.network } : {}),
+    },
   });
   const [code] = await once(tests, 'exit');
   process.exitCode = code ?? 1;

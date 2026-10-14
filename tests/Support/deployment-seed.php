@@ -25,6 +25,7 @@ Http::fake(function ($request) {
 
 $catalog = $app->make(MarvelCatalogGateway::class);
 $catalog->characters('', 0, 20);
+$catalog->characters('sp', 0, 20);
 $catalog->character(1);
 $catalog->stories(1, 0, 10);
 $catalog->comics(101, 0, 20);

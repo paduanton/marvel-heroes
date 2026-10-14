@@ -53,7 +53,7 @@ async function ready(container, args) {
 
 try {
   if (!nginx) execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], { stdio: 'inherit' });
-  docker(['network', 'create', ...(nginx ? ['--internal'] : []), network]);
+  docker(['network', 'create', '--label', `marvel-heroes.test-run=${run}`, ...(nginx ? ['--internal'] : []), network]);
   networkCreated = true;
   if (nginx) {
     docker(['network', 'create', edgeNetwork]);
@@ -61,7 +61,7 @@ try {
   }
   docker(['run', '--detach', '--rm', '--name', postgres, '--network', network, '--network-alias', 'postgres', '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_USER=marvel', '--env', 'POSTGRES_DB=identity_test', 'postgres:17-alpine']);
   containers.push(postgres);
-  docker(['run', '--detach', '--rm', '--name', redis, '--network', network, '--network-alias', 'redis', 'redis:7.4-alpine', 'redis-server', '--save', '', '--appendonly', 'no']);
+  docker(['run', '--detach', '--rm', '--name', redis, '--network', network, '--network-alias', 'redis', '--label', `marvel-heroes.test-run=${run}`, 'redis:7.4-alpine', 'redis-server', '--save', '', '--appendonly', 'no']);
   containers.push(redis);
   await ready(postgres, ['pg_isready', '-U', 'marvel', '-d', 'identity_test']);
   await ready(redis, ['redis-cli', 'ping']);
@@ -89,7 +89,7 @@ try {
     docker(['run', '--detach', '--rm', '--name', application, '--publish', `127.0.0.1:${port}:8000`, ...common, '-S', '0.0.0.0:8000', '-t', 'public', 'tests/Support/browser-router.php']);
     containers.push(application);
   }
-  process.send?.('ready');
+  process.send?.({ type: 'ready', run, redis, network });
   const logs = spawn('docker', ['logs', '--follow', application], { stdio: 'ignore' });
   logs.on('exit', code => { if (!stopped) { cleanup(); process.exit(code || 1); } });
   await new Promise(() => {});
