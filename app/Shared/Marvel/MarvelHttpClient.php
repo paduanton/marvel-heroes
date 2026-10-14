@@ -79,7 +79,9 @@ final class MarvelHttpClient implements MarvelCatalogGateway
                 )
                 ->get($path, array_merge($query, $this->signature()));
         } catch (ConnectionException $exception) {
-            throw new MarvelUnavailableException('Marvel API connection failed.', previous: $exception);
+            Log::warning('marvel.upstream_connection_failed', ['path' => $path, 'exception' => $exception::class]);
+            // Transport exception chains can contain signed request URLs.
+            throw new MarvelUnavailableException('Marvel API connection failed.');
         }
 
         if ($response->status() === 404) {
