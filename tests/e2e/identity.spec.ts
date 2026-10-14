@@ -75,3 +75,33 @@ test('registration disables duplicate submissions while pending and fits a narro
   await expect(page).toHaveURL(/\/account$/);
   expect(attempts).toBe(1);
 });
+
+test('registration explains byte limits and confirmation errors before any session mutation', async ({ page }) => {
+  let signedIn = false;
+  let bootstraps = 0;
+  let attempts = 0;
+  await page.route('**/sanctum/csrf-cookie', async route => { bootstraps++; await route.fulfill({ status: 204 }); });
+  await page.route('**/api/v1/me', async route => { await route.fulfill(signedIn ? { json: { data: identity } } : { status: 401, json: {} }); });
+  await page.route('**/api/v1/auth/register', async route => { attempts++; signedIn = true; await route.fulfill({ status: 201, json: { data: identity } }); });
+  await page.goto('/register');
+  await page.getByLabel('Name', { exact: true }).fill(identity.name);
+  await page.getByLabel('Email', { exact: true }).fill(identity.email);
+  await page.getByLabel('Password', { exact: true }).fill('\u00e9'.repeat(40));
+  await page.getByLabel('Confirm password', { exact: true }).fill('different-passphrase');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(page.getByRole('alert')).toBeFocused();
+  await expect(page.getByText('Use a password of at most 72 UTF-8 bytes.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Enter the same password in both fields.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('aria-describedby', /password-error/);
+  await expect(page.getByLabel('Confirm password', { exact: true })).toHaveAttribute('aria-describedby', 'confirmation-error');
+  expect(bootstraps).toBe(0);
+  expect(attempts).toBe(0);
+  await page.screenshot({ path: test.info().outputPath('registration-errors.png'), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByLabel('Password', { exact: true }).fill('valid-test-passphrase');
+  await page.getByLabel('Confirm password', { exact: true }).fill('valid-test-passphrase');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  expect(bootstraps).toBe(1);
+  expect(attempts).toBe(1);
+});

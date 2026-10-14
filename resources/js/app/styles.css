@@ -42,6 +42,7 @@ h1, h2, h3, p { margin-top: 0; overflow-wrap: anywhere; } h1 { max-width: 720px;
 .identity-field input { color-scheme: light; width: 100%; min-width: 0; padding: 12px; border: 1px solid #64748b; border-radius: 4px; background: #fff; color: #111827; }
 .identity-field input[aria-invalid="true"] { border-color: #b91c1c; }
 .identity-field small { color: #475569; line-height: 1.5; }
+.identity-field .identity-field-error { color: #991b1b; }
 .identity-command { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 44px; padding: 10px 18px; border: 0; border-radius: 4px; background: #b91c1c; color: #fff; font-weight: 650; }
 .identity-command:disabled, .identity-form fieldset:disabled { opacity: .65; cursor: wait; }
 .identity-link { display: block; margin-top: 24px; color: #b91c1c; text-decoration: underline; line-height: 1.5; }
