@@ -46,3 +46,60 @@ it('preserves cancellation before registration dispatch', async () => {
   controller.abort();
   await expect(register({ name: 'Visitor', email: 'visitor@example.test', password: 'test-passphrase', password_confirmation: 'test-passphrase' }, controller.signal)).rejects.toBeInstanceOf(CanceledError);
 });
+
+const mutations = [
+  { name: 'login', send: (signal?: AbortSignal) => login({ email: 'visitor@example.test', password: 'test-passphrase' }, signal) },
+  { name: 'register', send: (signal?: AbortSignal) => register({ name: 'Visitor', email: 'visitor@example.test', password: 'test-passphrase', password_confirmation: 'test-passphrase' }, signal) },
+  { name: 'logout', send: (signal?: AbortSignal) => logout(signal) },
+];
+
+it.each(mutations)('does not dispatch $name when CSRF bootstrap fails', async ({ send }) => {
+  const methods: string[] = [];
+  api.defaults.adapter = async config => {
+    methods.push(config.method!);
+    throw new AxiosError('unsafe transport detail', undefined, config, undefined, {
+      config, headers: {}, status: 503, statusText: 'Unavailable', data: { detail: 'unsafe server diagnostic' },
+    });
+  };
+  await expect(send()).rejects.toMatchObject({ status: 503, message: 'Unable to access your account right now.' });
+  expect(methods).toEqual(['get']);
+});
+
+it.each(mutations)('preserves $name cancellation during CSRF without issuing a mutation', async ({ send }) => {
+  const controller = new AbortController();
+  const methods: string[] = [];
+  api.defaults.adapter = async config => {
+    methods.push(config.method!);
+    controller.abort();
+    return { config, headers: {}, status: 204, statusText: 'OK', data: null };
+  };
+  await expect(send(controller.signal)).rejects.toBeInstanceOf(CanceledError);
+  expect(methods).toEqual(['get']);
+});
+
+it.each(mutations)('preserves cancellation after $name dispatch without replaying it', async ({ send }) => {
+  const controller = new AbortController();
+  const methods: string[] = [];
+  api.defaults.adapter = async config => {
+    methods.push(config.method!);
+    if (config.method === 'post') controller.abort();
+    return { config, headers: {}, status: 200, statusText: 'OK', data: { data: { id: 1, name: 'Visitor', email: 'visitor@example.test' } } };
+  };
+  await expect(send(controller.signal)).rejects.toBeInstanceOf(CanceledError);
+  expect(methods).toEqual(['get', 'post']);
+});
+
+it.each([403, 419, 429, 500, 503])('does not treat a %s session lookup failure as anonymous', async status => {
+  api.defaults.adapter = async config => { throw new AxiosError('failure', undefined, config, undefined, {
+    config, headers: {}, status, statusText: 'Failed', data: {},
+  }); };
+  await expect(currentIdentity()).rejects.toMatchObject({ status });
+});
+
+it('uses only known validation field names, never arbitrary response diagnostics', async () => {
+  api.defaults.adapter = async config => { throw new AxiosError('failure', undefined, config, undefined, {
+    config, headers: {}, status: 422, statusText: 'Invalid',
+    data: { code: 'validation-failed', detail: 'unsafe detail', errors: { email: ['unsafe detail'], password_hash: ['unsafe detail'], session_cookie: ['unsafe detail'] } },
+  }); };
+  await expect(login({ email: 'visitor@example.test', password: 'test-passphrase' })).rejects.toMatchObject({ fields: ['email'], message: 'Check your details and try again.' });
+});
