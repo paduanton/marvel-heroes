@@ -2,13 +2,15 @@
 
 namespace App\Modules\Characters\Presentation\Requests;
 
+use App\Modules\Characters\Domain\CatalogLimits;
+
 trait PaginatesCatalog
 {
     /** @return array<string, mixed> */
     protected function paginationRules(int $maximumPerPage): array
     {
         return [
-            'page' => ['sometimes', 'integer', 'min:1'],
+            'page' => ['sometimes', 'integer', 'min:1', 'max:'.CatalogLimits::MAX_PAGE],
             'per_page' => ['sometimes', 'integer', 'min:1', "max:{$maximumPerPage}"],
         ];
     }

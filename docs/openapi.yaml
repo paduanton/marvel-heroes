@@ -163,6 +163,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StoryCollection'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
         '422':
           $ref: '#/components/responses/ValidationProblem'
         '429':
@@ -185,6 +187,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ComicCollection'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
         '422':
           $ref: '#/components/responses/ValidationProblem'
         '429':
@@ -209,7 +213,8 @@ components:
     Page:
       name: page
       in: query
-      schema: { type: integer, minimum: 1, default: 1 }
+      schema: { type: integer, minimum: 1, maximum: 9007199254740991, default: 1 }
+      description: Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch.
     PerPage:
       name: per_page
       in: query
@@ -218,12 +223,14 @@ components:
       name: characterId
       in: path
       required: true
-      schema: { type: integer, minimum: 1 }
+      schema: { type: integer, minimum: 1, maximum: 9007199254740991 }
+      description: Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch.
     StoryId:
       name: storyId
       in: path
       required: true
-      schema: { type: integer, minimum: 1 }
+      schema: { type: integer, minimum: 1, maximum: 9007199254740991 }
+      description: Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch.
   responses:
     UnauthenticatedProblem:
       description: A valid session is required.

@@ -319,6 +319,7 @@ export interface paths {
                 query?: {
                     /** @description Case-insensitive character name prefix. */
                     query?: components["parameters"]["SearchQuery"];
+                    /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
                     page?: components["parameters"]["Page"];
                     per_page?: components["parameters"]["PerPage"];
                 };
@@ -364,6 +365,7 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
+                    /** @description Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch. */
                     characterId: components["parameters"]["CharacterId"];
                 };
                 cookie?: never;
@@ -403,11 +405,13 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
                     page?: components["parameters"]["Page"];
                     per_page?: components["parameters"]["PerPage"];
                 };
                 header?: never;
                 path: {
+                    /** @description Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch. */
                     characterId: components["parameters"]["CharacterId"];
                 };
                 cookie?: never;
@@ -423,6 +427,7 @@ export interface paths {
                         "application/json": components["schemas"]["StoryCollection"];
                     };
                 };
+                404: components["responses"]["NotFoundProblem"];
                 422: components["responses"]["ValidationProblem"];
                 429: components["responses"]["RateLimitProblem"];
                 502: components["responses"]["UpstreamProblem"];
@@ -448,11 +453,13 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
                     page?: components["parameters"]["Page"];
                     per_page?: components["parameters"]["PerPage"];
                 };
                 header?: never;
                 path: {
+                    /** @description Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch. */
                     storyId: components["parameters"]["StoryId"];
                 };
                 cookie?: never;
@@ -468,6 +475,7 @@ export interface paths {
                         "application/json": components["schemas"]["ComicCollection"];
                     };
                 };
+                404: components["responses"]["NotFoundProblem"];
                 422: components["responses"]["ValidationProblem"];
                 429: components["responses"]["RateLimitProblem"];
                 502: components["responses"]["UpstreamProblem"];
@@ -671,9 +679,12 @@ export interface components {
     parameters: {
         /** @description Case-insensitive character name prefix. */
         SearchQuery: string;
+        /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
         Page: number;
         PerPage: number;
+        /** @description Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch. */
         CharacterId: number;
+        /** @description Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch. */
         StoryId: number;
     };
     requestBodies: never;
