@@ -23,6 +23,9 @@ final class ListCharactersRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge(['query' => trim((string) $this->query('query', ''))]);
+        $query = $this->query('query', '');
+        if (is_string($query)) {
+            $this->merge(['query' => trim($query)]);
+        }
     }
 }
