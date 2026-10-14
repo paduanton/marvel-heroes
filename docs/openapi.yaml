@@ -12,6 +12,7 @@ paths:
       summary: Initialize first-party CSRF and session cookies
       responses:
         '204': { description: XSRF-TOKEN and session cookies initialized. }
+        '503': { $ref: '#/components/responses/IdentityUnavailableProblem' }
   /auth/register:
     post:
       summary: Register an identity and establish a session
@@ -74,6 +75,7 @@ paths:
       - url: /
     get:
       summary: Check application liveness
+      description: Stateless probe. Does not start a session or require Redis, PostgreSQL or Marvel availability.
       responses:
         '200':
           description: The application can serve requests.
@@ -89,7 +91,7 @@ paths:
       - url: /
     get:
       summary: Check cache access and credential configuration
-      description: Does not call the upstream Marvel API or validate the credentials with it.
+      description: Stateless probe of cache access and Marvel credential presence. Does not start a session, check PostgreSQL, call Marvel or validate the credentials with it.
       responses:
         '200':
           description: Cache is accessible and Marvel credentials are configured.
@@ -245,7 +247,7 @@ components:
       description: Invalid request fields or query parameters.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     IdentityUnavailableProblem:
-      description: Identity persistence is temporarily unavailable.
+      description: Identity persistence or its required session/rate-limit store is unavailable. Redis failures use code dependency-unavailable and never bypass session or rate-limit checks.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     RateLimitProblem:
       description: Local rate limit exceeded.
@@ -257,7 +259,7 @@ components:
       description: Marvel API could not be reached and no stale result is available.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     CatalogUnavailableProblem:
-      description: The configured upstream request budget is exhausted or the requested entry is already being refreshed and no stale result is available.
+      description: The upstream budget is exhausted, refresh is in progress without stale data, or Redis is unavailable. Redis failures use code dependency-unavailable; the server never bypasses cache or budget to call Marvel.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
   schemas:
     Login:

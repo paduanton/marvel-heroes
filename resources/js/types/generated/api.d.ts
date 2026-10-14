@@ -28,6 +28,7 @@ export interface paths {
                     };
                     content?: never;
                 };
+                503: components["responses"]["IdentityUnavailableProblem"];
             };
         };
         put?: never;
@@ -220,7 +221,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check application liveness */
+        /**
+         * Check application liveness
+         * @description Stateless probe. Does not start a session or require Redis, PostgreSQL or Marvel availability.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -261,7 +265,7 @@ export interface paths {
         };
         /**
          * Check cache access and credential configuration
-         * @description Does not call the upstream Marvel API or validate the credentials with it.
+         * @description Stateless probe of cache access and Marvel credential presence. Does not start a session, check PostgreSQL, call Marvel or validate the credentials with it.
          */
         get: {
             parameters: {
@@ -630,7 +634,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description Identity persistence is temporarily unavailable. */
+        /** @description Identity persistence or its required session/rate-limit store is unavailable. Redis failures use code dependency-unavailable and never bypass session or rate-limit checks. */
         IdentityUnavailableProblem: {
             headers: {
                 [name: string]: unknown;
@@ -666,7 +670,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The configured upstream request budget is exhausted or the requested entry is already being refreshed and no stale result is available. */
+        /** @description The upstream budget is exhausted, refresh is in progress without stale data, or Redis is unavailable. Redis failures use code dependency-unavailable; the server never bypasses cache or budget to call Marvel. */
         CatalogUnavailableProblem: {
             headers: {
                 [name: string]: unknown;

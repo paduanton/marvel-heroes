@@ -14,6 +14,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -42,6 +43,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append([RequestId::class, SecurityHeaders::class, ApiCacheHeaders::class]);
     })
     ->withExceptions(function (Exceptions $exceptions) use ($problem): void {
+        $exceptions->report(function (RedisException $exception): bool {
+            Log::warning('infrastructure.redis_unavailable', ['exception' => $exception::class]);
+
+            return false;
+        });
+        $exceptions->render(function (RedisException $exception, Request $request) use ($problem) {
+            return $request->is('api/*', 'sanctum/csrf-cookie')
+                ? $problem($request, 503, 'dependency-unavailable', 'A required service is temporarily unavailable.')
+                : null;
+        });
         $exceptions->render(function (AuthenticationException $exception, Request $request) use ($problem) {
             return $request->is('api/*') ? $problem($request, 401, 'unauthenticated', 'Sign in to access this resource.') : null;
         });

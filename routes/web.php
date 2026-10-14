@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 
 require __DIR__.'/identity.php';
 
-Route::get('/health', fn () => response()->json(['status' => 'ok']));
+Route::get('/health', fn () => response()->json(['status' => 'ok']))->withoutMiddleware('web');
 Route::get('/ready', function () {
     try {
         Cache::store()->get('marvel:readiness');
@@ -28,6 +28,6 @@ Route::get('/ready', function () {
     } catch (Throwable) {
         return response()->json(['status' => 'not_ready'], 503);
     }
-});
+})->withoutMiddleware('web');
 
 Route::view('/{any?}', 'app')->where('any', '^(?!api(?:/|$)).*$');
