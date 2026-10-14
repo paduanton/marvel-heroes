@@ -4,8 +4,9 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY resources ./resources
+COPY docs/openapi.yaml ./docs/openapi.yaml
 COPY vite.config.ts tsconfig.json ./
-RUN pnpm run build
+RUN pnpm run types:check && pnpm run build
 
 FROM composer:2 AS dependencies
 
