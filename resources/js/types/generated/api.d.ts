@@ -4,6 +4,215 @@
  */
 
 export interface paths {
+    "/sanctum/csrf-cookie": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Initialize first-party CSRF and session cookies */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description XSRF-TOKEN and session cookies initialized. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register an identity and establish a session
+         * @description First-party session flow. Bootstrap /sanctum/csrf-cookie first and send X-XSRF-TOKEN. No Bearer token is issued. Passwords are never returned.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["Registration"];
+                };
+            };
+            responses: {
+                /** @description Identity created and session regenerated. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IdentityResource"];
+                    };
+                };
+                419: components["responses"]["CsrfProblem"];
+                422: components["responses"]["ValidationProblem"];
+                429: components["responses"]["RateLimitProblem"];
+                503: components["responses"]["IdentityUnavailableProblem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Establish a first-party session
+         * @description Bootstrap /sanctum/csrf-cookie first. Invalid credentials use the same validation response whether the email exists or not. No persistent browser token is issued.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["Login"];
+                };
+            };
+            responses: {
+                /** @description Authenticated identity and regenerated session. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IdentityResource"];
+                    };
+                };
+                419: components["responses"]["CsrfProblem"];
+                422: components["responses"]["ValidationProblem"];
+                429: components["responses"]["RateLimitProblem"];
+                503: components["responses"]["IdentityUnavailableProblem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invalidate the current session and regenerate its CSRF token */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Session invalidated. */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                401: components["responses"]["UnauthenticatedProblem"];
+                419: components["responses"]["CsrfProblem"];
+                429: components["responses"]["RateLimitProblem"];
+                503: components["responses"]["IdentityUnavailableProblem"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the authenticated caller's identity
+         * @description Private response with no-store. Never cached as catalog content.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Authorized identity. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IdentityResource"];
+                    };
+                };
+                401: components["responses"]["UnauthenticatedProblem"];
+                403: components["responses"]["ForbiddenProblem"];
+                429: components["responses"]["RateLimitProblem"];
+                503: components["responses"]["IdentityUnavailableProblem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -277,6 +486,29 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Login: {
+            /** Format: email */
+            email: string;
+            /** @description Maximum 72 UTF-8 bytes; null characters are rejected. */
+            password: string;
+        };
+        Registration: {
+            name: string;
+            /** Format: email */
+            email: string;
+            /** @description Maximum 72 UTF-8 bytes; null characters are rejected. */
+            password: string;
+            password_confirmation: string;
+        };
+        Identity: {
+            id: number;
+            name: string;
+            /** Format: email */
+            email: string;
+        };
+        IdentityResource: {
+            data: components["schemas"]["Identity"];
+        };
         Meta: {
             page: number;
             per_page: number;
@@ -347,11 +579,51 @@ export interface components {
             code: string;
             detail: string;
             request_id: string | null;
+            /** @description Field validation issues, present only on validation failures. */
+            errors?: {
+                [key: string]: string[];
+            };
         };
     };
     responses: {
-        /** @description Invalid query parameters. */
+        /** @description A valid session is required. */
+        UnauthenticatedProblem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description The authenticated caller is not authorized for the identity. */
+        ForbiddenProblem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description CSRF validation failed; bootstrap the session again before retrying manually. */
+        CsrfProblem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Invalid request fields or query parameters. */
         ValidationProblem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Identity persistence is temporarily unavailable. */
+        IdentityUnavailableProblem: {
             headers: {
                 [name: string]: unknown;
             };

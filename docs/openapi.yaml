@@ -2,10 +2,73 @@ openapi: 3.1.0
 info:
   title: Marvel Heroes Catalog API
   version: 1.0.0
-  description: Stable read-only catalog interface for the Marvel Heroes application.
+  description: Public catalog and first-party session identity interface for the Marvel Heroes application.
 servers:
   - url: /api/v1
 paths:
+  /sanctum/csrf-cookie:
+    servers: [{ url: / }]
+    get:
+      summary: Initialize first-party CSRF and session cookies
+      responses:
+        '204': { description: XSRF-TOKEN and session cookies initialized. }
+  /auth/register:
+    post:
+      summary: Register an identity and establish a session
+      description: First-party session flow. Bootstrap /sanctum/csrf-cookie first and send X-XSRF-TOKEN. No Bearer token is issued. Passwords are never returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Registration' }
+      responses:
+        '201':
+          description: Identity created and session regenerated.
+          content: { application/json: { schema: { $ref: '#/components/schemas/IdentityResource' } } }
+        '419': { $ref: '#/components/responses/CsrfProblem' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        '429': { $ref: '#/components/responses/RateLimitProblem' }
+        '503': { $ref: '#/components/responses/IdentityUnavailableProblem' }
+  /auth/login:
+    post:
+      summary: Establish a first-party session
+      description: Bootstrap /sanctum/csrf-cookie first. Invalid credentials use the same validation response whether the email exists or not. No persistent browser token is issued.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Login' }
+      responses:
+        '200':
+          description: Authenticated identity and regenerated session.
+          content: { application/json: { schema: { $ref: '#/components/schemas/IdentityResource' } } }
+        '419': { $ref: '#/components/responses/CsrfProblem' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        '429': { $ref: '#/components/responses/RateLimitProblem' }
+        '503': { $ref: '#/components/responses/IdentityUnavailableProblem' }
+  /auth/logout:
+    post:
+      summary: Invalidate the current session and regenerate its CSRF token
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Session invalidated. }
+        '401': { $ref: '#/components/responses/UnauthenticatedProblem' }
+        '419': { $ref: '#/components/responses/CsrfProblem' }
+        '429': { $ref: '#/components/responses/RateLimitProblem' }
+        '503': { $ref: '#/components/responses/IdentityUnavailableProblem' }
+  /me:
+    get:
+      summary: Read the authenticated caller's identity
+      description: Private response with no-store. Never cached as catalog content.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Authorized identity.
+          content: { application/json: { schema: { $ref: '#/components/schemas/IdentityResource' } } }
+        '401': { $ref: '#/components/responses/UnauthenticatedProblem' }
+        '403': { $ref: '#/components/responses/ForbiddenProblem' }
+        '429': { $ref: '#/components/responses/RateLimitProblem' }
+        '503': { $ref: '#/components/responses/IdentityUnavailableProblem' }
   /health:
     servers:
       - url: /
@@ -131,6 +194,12 @@ paths:
         '503':
           $ref: '#/components/responses/CatalogUnavailableProblem'
 components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: marvel_heroes_session
+      description: HttpOnly first-party session cookie, Secure in production, SameSite=Lax. State-changing requests also send the CSRF cookie value in X-XSRF-TOKEN. No token issuance endpoint exists.
   parameters:
     SearchQuery:
       name: query
@@ -156,8 +225,20 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   responses:
+    UnauthenticatedProblem:
+      description: A valid session is required.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    ForbiddenProblem:
+      description: The authenticated caller is not authorized for the identity.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    CsrfProblem:
+      description: CSRF validation failed; bootstrap the session again before retrying manually.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     ValidationProblem:
-      description: Invalid query parameters.
+      description: Invalid request fields or query parameters.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    IdentityUnavailableProblem:
+      description: Identity persistence is temporarily unavailable.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     RateLimitProblem:
       description: Local rate limit exceeded.
@@ -172,6 +253,32 @@ components:
       description: The configured upstream request budget is exhausted or the requested entry is already being refreshed and no stale result is available.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
   schemas:
+    Login:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 1, maxLength: 72, writeOnly: true, description: Maximum 72 UTF-8 bytes; null characters are rejected. }
+    Registration:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { type: string, minLength: 12, maxLength: 72, writeOnly: true, description: Maximum 72 UTF-8 bytes; null characters are rejected. }
+        password_confirmation: { type: string, minLength: 12, maxLength: 72, writeOnly: true }
+    Identity:
+      type: object
+      required: [id, name, email]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+    IdentityResource:
+      type: object
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/Identity' }
     Meta:
       type: object
       required: [page, per_page, total, cache]
@@ -257,3 +364,9 @@ components:
         code: { type: string }
         detail: { type: string }
         request_id: { type: [string, 'null'] }
+        errors:
+          type: object
+          description: Field validation issues, present only on validation failures.
+          additionalProperties:
+            type: array
+            items: { type: string }

@@ -14,6 +14,8 @@
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 
+require __DIR__.'/identity.php';
+
 Route::get('/health', fn () => response()->json(['status' => 'ok']));
 Route::get('/ready', function () {
     try {

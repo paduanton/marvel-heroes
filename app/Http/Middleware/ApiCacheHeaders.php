@@ -11,7 +11,13 @@ final class ApiCacheHeaders
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
-        if (! $request->is('api/*') || ! $request->isMethod('GET') || $response->getStatusCode() !== 200) {
+        if ($request->is('api/v1/auth/*', 'api/v1/me', 'sanctum/csrf-cookie')) {
+            $response->headers->set('Cache-Control', 'private, no-store');
+            $response->headers->remove('ETag');
+
+            return $response;
+        }
+        if (! $request->routeIs('catalog.*', 'legacy.*') || ! $request->isMethod('GET') || $response->getStatusCode() !== 200) {
             return $response;
         }
 
