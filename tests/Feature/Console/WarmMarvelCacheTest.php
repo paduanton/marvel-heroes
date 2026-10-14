@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Console;
 
+use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class WarmMarvelCacheTest extends TestCase
@@ -106,5 +109,118 @@ class WarmMarvelCacheTest extends TestCase
 
             return ($query['offset'] ?? null) === '20' && $query['limit'] === '20';
         });
+    }
+
+    #[DataProvider('invalidQueries')]
+    public function test_all_queries_are_validated_before_any_budget_is_spent(mixed $invalid): void
+    {
+        config(['marvel.warm_queries' => ['spider-man', $invalid]]);
+
+        $this->artisan('marvel:cache:warm')->expectsOutputToContain('No requests were made.')->assertExitCode(2);
+
+        Http::assertNothingSent();
+        self::assertNull(Cache::get('marvel:budget:timestamps'));
+    }
+
+    public static function invalidQueries(): array
+    {
+        return [
+            'one character' => ['x'], 'numeric zero' => ['0'],
+            'too long' => [str_repeat('a', 101)], 'array' => [['spider']],
+            'integer' => [12], 'null' => [null], 'boolean' => [false],
+        ];
+    }
+
+    public function test_dry_run_previews_normalized_unique_queries_without_credentials_or_budget(): void
+    {
+        config(['marvel.public_key' => '', 'marvel.private_key' => '', 'marvel.daily_budget' => 0]);
+
+        $this->artisan('marvel:cache:warm', ['--query' => [' SPIDER-MAN ', 'spider-man', '', ' '], '--dry-run' => true])
+            ->expectsOutputToContain('Planned character query: spider-man')
+            ->expectsOutputToContain('Planned initial character catalog.')
+            ->expectsOutputToContain('Dry run: 2 unique queries; no upstream requests or cache changes.')
+            ->assertSuccessful();
+
+        Http::assertNothingSent();
+        self::assertNull(Cache::get('marvel:budget:timestamps'));
+    }
+
+    public function test_normalization_deduplicates_output_and_requests(): void
+    {
+        $this->withoutMockingConsoleOutput();
+        self::assertSame(0, Artisan::call('marvel:cache:warm', ['--query' => [' SPIDER-MAN ', 'spider-man', 'SPIDER-MAN', '', ' ']]));
+        $output = Artisan::output();
+        self::assertSame(1, substr_count($output, 'Warmed character query: spider-man'));
+        self::assertSame(1, substr_count($output, 'Warmed initial character catalog.'));
+        Http::assertSentCount(2);
+    }
+
+    public function test_dry_run_does_not_populate_catalog_cache(): void
+    {
+        config(['marvel.daily_budget' => 1]);
+        $this->artisan('marvel:cache:warm --query=sp --dry-run')->assertSuccessful();
+        Http::assertNothingSent();
+        $this->getJson('/api/v1/characters?query=sp')->assertOk();
+        Http::assertSentCount(1);
+    }
+
+    public function test_invalid_explicit_queries_also_fail_in_dry_run(): void
+    {
+        $this->artisan('marvel:cache:warm --query=x --dry-run')->assertExitCode(2);
+        Http::assertNothingSent();
+    }
+
+    public function test_invalid_configured_query_list_is_rejected_without_a_type_error(): void
+    {
+        config(['marvel.warm_queries' => 'not-a-list']);
+        $this->artisan('marvel:cache:warm')->assertExitCode(2);
+        Http::assertNothingSent();
+    }
+
+    public function test_stale_fallback_is_reported_without_claiming_a_refresh(): void
+    {
+        $this->getJson('/api/v1/characters?query=sp')->assertOk();
+        $this->travel(31)->days();
+        $this->getJson('/api/v1/characters?query=iron')->assertOk();
+        config(['marvel.daily_budget' => 0]);
+        $this->withoutMockingConsoleOutput();
+
+        self::assertSame(0, Artisan::call('marvel:cache:warm', ['--query' => ['sp', 'iron']]));
+        $output = Artisan::output();
+        self::assertStringContainsString('Stale cache kept for character query: sp', $output);
+        self::assertStringNotContainsString('Warmed character query: sp', $output);
+        self::assertStringContainsString('Warmup finished: 1 fresh, 1 stale, 0 failed.', $output);
+        Http::assertSentCount(2);
+    }
+
+    public function test_a_failed_query_does_not_hide_later_successes_or_print_upstream_diagnostics(): void
+    {
+        Http::swap(new Factory);
+        Http::preventStrayRequests();
+        Http::fake(['marvel.test/*' => fn (Request $request) => $request['nameStartsWith'] === 'sp'
+            ? Http::response(['message' => 'Private upstream diagnostic'], 503)
+            : Http::response(['data' => ['results' => [['id' => 2, 'name' => 'Iron Man']], 'total' => 1]])]);
+        $this->withoutMockingConsoleOutput();
+
+        self::assertSame(1, Artisan::call('marvel:cache:warm', ['--query' => ['sp', 'iron']]));
+        $output = Artisan::output();
+        self::assertStringContainsString('Could not warm character query: sp (upstream-unavailable).', $output);
+        self::assertStringContainsString('Warmed character query: iron', $output);
+        self::assertStringContainsString('Warmup finished: 1 fresh, 0 stale, 1 failed.', $output);
+        self::assertStringNotContainsString('Private upstream diagnostic', $output);
+        Http::assertSentCount(2);
+    }
+
+    public function test_exhausted_budget_still_allows_a_later_fresh_cached_query(): void
+    {
+        $this->getJson('/api/v1/characters?query=iron')->assertOk();
+        config(['marvel.daily_budget' => 0]);
+        $this->withoutMockingConsoleOutput();
+
+        self::assertSame(1, Artisan::call('marvel:cache:warm', ['--query' => ['missing', 'iron']]));
+        $output = Artisan::output();
+        self::assertStringContainsString('upstream-budget-exhausted', $output);
+        self::assertStringContainsString('Warmup finished: 1 fresh, 0 stale, 1 failed.', $output);
+        Http::assertSentCount(1);
     }
 }
