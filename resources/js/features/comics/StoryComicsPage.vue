@@ -35,6 +35,8 @@ const { comics, total, page, perPage, loading, error, stale, next, previous, ret
 <style scoped>
 .discovery-return { display: flex; flex-wrap: wrap; gap: 12px 24px; }
 
+.catalog-hero--compact { clip-path: inset(0 -100vmax); }
+
 .retry-comics {
   display: block;
   min-height: 44px;
