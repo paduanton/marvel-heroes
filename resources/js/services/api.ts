@@ -37,4 +37,6 @@ export const api = axios.create({
   baseURL: '/api/v1',
   headers: { Accept: 'application/json' },
   timeout: 10_000,
+  withCredentials: true,
+  withXSRFToken: true,
 });

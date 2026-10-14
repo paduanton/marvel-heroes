@@ -23,6 +23,7 @@ watch(() => route.meta.title, (title) => {
       </RouterLink>
       <nav aria-label="Primary navigation">
         <RouterLink to="/">Characters</RouterLink>
+        <RouterLink to="/account">Account</RouterLink>
       </nav>
     </header>
     <main id="main-content" ref="mainContent" class="content" tabindex="-1"><RouterView /></main>
