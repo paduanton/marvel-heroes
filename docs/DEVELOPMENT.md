@@ -29,7 +29,7 @@ Set `MARVEL_PUBLIC_KEY` and `MARVEL_PRIVATE_KEY` in the local `.env` before star
 
 The one-off key-generation and migration commands above are for a new installation only. Key generation mounts the host `.env` explicitly so the key survives container removal. An existing installation keeps its current `APP_KEY` and requires review and explicit authorization before migrations. Container startup never runs migrations automatically. Subsequent starts use `docker compose up -d --build`.
 
-Open `http://localhost:8080`. `/health` checks application liveness; `/ready` checks access to the configured cache and whether Marvel credentials are present. It does not authenticate with Marvel or establish upstream availability. The Compose FPM healthcheck verifies a local TCP connection to port 9000.
+Open `http://localhost:8080`. `/health` is a stateless application-liveness probe; `/ready` is a stateless check of cache access and Marvel credential presence. Neither starts a session. Readiness does not check PostgreSQL, authenticate with Marvel or establish upstream availability. The Compose FPM healthcheck verifies a local TCP connection to port 9000.
 
 ## Backend validation
 
@@ -101,6 +101,8 @@ Rebuild both images after source changes. This separate check uses the existing 
 
 PHP, PostgreSQL and Redis stay on an internal network. Only Nginx also joins an edge network and publishes loopback port `4175`; all test containers and both networks are removed on completion or failure. `FULL_STACK_PORT`, `FULL_STACK_IMAGE` and `FULL_STACK_WEB_IMAGE` override the port and freshly built images. Playwright channel selection follows the integrated session check above. The check covers discovery, SPA deep links, assets, session/CSRF, conditional caching and safe invalid-input responses. Marvel credentials are absent, so uncached queries fail safely without provider calls. HTTPS termination, production Secure cookies, load testing and real upstream availability are not validated.
 
+Outage scenarios pause and unpause only the runner-owned Redis container, after checking its generated name and ownership labels. They retain its process and data while verifying stateless liveness, unavailable readiness, safe API/CSRF errors, manual catalog recovery and session preservation without automatic logout replay. Cleanup restores the paused container even when an assertion fails. This does not validate Redis restart/data loss, DNS failures, disconnected networks or high availability; never reproduce the outage against an existing service.
+
 The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, character search/navigation, character detail and story comics loading. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. The comics suite uses a reactive story ID and Vue effect scope to verify reloads on ID changes, pagination bounds, cancellation, late responses, empty results, error recovery and disposal. The detail suite verifies independent character/story loading and errors, ID changes, cancellation, obsolete responses, disposal, recovery and empty stories through the composable's exposed state. Its pagination tests cover story-only requests, page bounds, actions during loading, resets on character changes and recovery from a failed page. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation, status rendering, keyboard accessibility and responsive visual behavior are checked separately by the browser suite below. Passing unit tests or the build alone is not evidence of complete browser workflows.
 
 The separate `useCharacterDetail.retry.test.ts` suite covers manual story retries on the first and subsequent pages, preservation of the character and pagination, redundant-action guards, repeated failure and cancellation on character changes or disposal. It uses the same simulated HTTP boundary and does not verify button rendering, focus behavior or browser interaction.
@@ -147,6 +149,14 @@ Execution reports fresh, stale and failed entries separately. Fresh includes reu
 ## Upstream timeout
 
 `MARVEL_TIMEOUT_SECONDS` must resolve to a positive integer number of seconds (default: `5`). Zero or negative effective values block upstream requests before any HTTP attempt or budget reservation. Existing fresh or valid stale cache can still serve the catalog; an uncached request returns `502` with `upstream-unavailable`, without exposing the configuration error. After correcting local configuration, reload the application/configuration cache as appropriate for the environment. This check runs when the client needs upstream data, not at startup or in `/ready`.
+
+## Redis availability
+
+When PhpRedis reports a dependency failure, API routes and `/sanctum/csrf-cookie` return `503 application/problem+json` with code `dependency-unavailable` and a correlated `request_id`. Identity responses remain `private, no-store`. The application does not bypass cache, budget, authentication or rate limiting to keep serving requests; the stateless liveness probe remains available, and readiness returns `503` with `status: not_ready` when its cache check fails. Readiness still requires configured Marvel credentials after recovery.
+
+Both PhpRedis connections use explicit connection and read timeouts, each defaulting to one second, with command retries disabled (`max_retries=0`). Operators can set `REDIS_CONNECT_TIMEOUT` and `REDIS_READ_TIMEOUT` to positive seconds, including fractions; do not use zero or negative values to disable these bounds. After changing runtime configuration, reload the application and rebuild its configuration cache as appropriate for the environment.
+
+These are per-operation limits, not an end-to-end response-time guarantee: DNS resolution, scheduling and multiple Redis operations can still add latency before the driver reports a failure. The catalog offers manual retry rather than automatic polling; identity mutations are not automatically replayed. Retained Redis data can become usable again after connectivity recovers, but this does not guarantee survival of data loss or a Redis restart. Safe technical events retain request correlation without raw Redis connection diagnostics or signed Marvel transport exception chains.
 
 ## Current scope
 
