@@ -89,6 +89,18 @@ The runner creates a uniquely named Docker network, PostgreSQL database and Redi
 
 Use `FULL_STACK_PORT` for another free port or `FULL_STACK_IMAGE` for a different freshly built testing image. Playwright requires its Chromium installation; an already installed Edge can be selected locally with `$env:PLAYWRIGHT_CHANNEL='msedge'`. Run browser suites sequentially to avoid sharing their compiled asset output. Production session cookies require HTTPS and `SESSION_SECURE_COOKIE=true`; local HTTP defaults must not be carried into production.
 
+### Nginx and PHP-FPM validation
+
+```powershell
+docker build --target application -t marvel-heroes-deployment-app .
+docker build --target web -t marvel-heroes-deployment-web .
+pnpm run test:deployment
+```
+
+Rebuild both images after source changes. This separate check uses the existing `application` (Composer `--no-dev`) and `web` targets, their built assets and the real front controller, without application-source bind mounts or the simulated HTTP router. A CLI-only fixture preloads predefined synthetic catalog entries into a fresh Redis instance. PostgreSQL migrations run only on the newly created disposable database; no host data volumes or `.env` files are mounted, and temporary secrets are generated at runtime.
+
+PHP, PostgreSQL and Redis stay on an internal network. Only Nginx also joins an edge network and publishes loopback port `4175`; all test containers and both networks are removed on completion or failure. `FULL_STACK_PORT`, `FULL_STACK_IMAGE` and `FULL_STACK_WEB_IMAGE` override the port and freshly built images. Playwright channel selection follows the integrated session check above. The check covers discovery, SPA deep links, assets, session/CSRF, conditional caching and safe invalid-input responses. Marvel credentials are absent, so uncached queries fail safely without provider calls. HTTPS termination, production Secure cookies, load testing and real upstream availability are not validated.
+
 The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, character search/navigation, character detail and story comics loading. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. The comics suite uses a reactive story ID and Vue effect scope to verify reloads on ID changes, pagination bounds, cancellation, late responses, empty results, error recovery and disposal. The detail suite verifies independent character/story loading and errors, ID changes, cancellation, obsolete responses, disposal, recovery and empty stories through the composable's exposed state. Its pagination tests cover story-only requests, page bounds, actions during loading, resets on character changes and recovery from a failed page. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation, status rendering, keyboard accessibility and responsive visual behavior are checked separately by the browser suite below. Passing unit tests or the build alone is not evidence of complete browser workflows.
 
 The separate `useCharacterDetail.retry.test.ts` suite covers manual story retries on the first and subsequent pages, preservation of the character and pagination, redundant-action guards, repeated failure and cancellation on character changes or disposal. It uses the same simulated HTTP boundary and does not verify button rendering, focus behavior or browser interaction.
@@ -138,4 +150,4 @@ Execution reports fresh, stale and failed entries separately. Fresh includes reu
 
 ## Current scope
 
-Catalog endpoints are public and rate-limited. Sanctum and identity persistence are planned in [AUTHENTICATION.md](AUTHENTICATION.md), not implemented. See [ARCHITECTURE.md](ARCHITECTURE.md) for cache and client limitations.
+Catalog endpoints are public and rate-limited. First-party Sanctum sessions and PostgreSQL identity persistence are implemented as described in [AUTHENTICATION.md](AUTHENTICATION.md); external-client tokens, email verification and password reset remain deferred. See [ARCHITECTURE.md](ARCHITECTURE.md) for cache and client limitations.
