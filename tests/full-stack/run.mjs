@@ -3,8 +3,12 @@ import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
-const server = fork(resolve('tests/full-stack/server.mjs'), [], { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
-const port = process.env.FULL_STACK_PORT ?? '4174';
+const nginx = process.argv.includes('--nginx');
+const port = process.env.FULL_STACK_PORT ?? (nginx ? '4175' : '4174');
+const server = fork(resolve('tests/full-stack/server.mjs'), [], {
+  stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
+  env: { ...process.env, FULL_STACK_TRANSPORT: nginx ? 'nginx' : 'php', FULL_STACK_PORT: port },
+});
 let tests;
 let interrupted = false;
 process.on('SIGINT', () => { interrupted = true; tests?.kill(); if (server.connected) server.send('stop'); });
@@ -23,7 +27,9 @@ try {
     await setTimeout(500);
   }
   if (!ready || interrupted) throw new Error('Disposable HTTP service is not ready.');
-  tests = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.full-stack.config.ts', ...process.argv.slice(2).filter(argument => argument !== '--')], { stdio: 'inherit' });
+  tests = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test', '--config', nginx ? 'playwright.deployment.config.ts' : 'playwright.full-stack.config.ts', ...process.argv.slice(2).filter(argument => argument !== '--' && argument !== '--nginx')], {
+    stdio: 'inherit', env: { ...process.env, FULL_STACK_PORT: port },
+  });
   const [code] = await once(tests, 'exit');
   process.exitCode = code ?? 1;
 } catch (error) {
