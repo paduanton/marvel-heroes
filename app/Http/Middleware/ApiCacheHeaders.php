@@ -26,9 +26,7 @@ final class ApiCacheHeaders
         $response->headers->set('Cache-Control', 'public, max-age=300, stale-while-revalidate=86400');
         $response->headers->set('Vary', 'Accept-Encoding');
 
-        if ($request->header('If-None-Match') === $etag) {
-            return response()->noContent(304)->withHeaders($response->headers->all());
-        }
+        $response->isNotModified($request);
 
         return $response;
     }
