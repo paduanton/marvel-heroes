@@ -14,14 +14,20 @@ Run from the repository root. Create `.env` only if it does not already exist:
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+Set a local `DB_PASSWORD` in the ignored `.env` before building; Compose requires it for PostgreSQL. Then:
+
+```powershell
 docker compose build
 docker compose run --rm --no-deps --user root --volume "${PWD}/.env:/var/www/html/.env" app php artisan key:generate --force
 docker compose up -d
+docker compose exec app php artisan migrate
 ```
 
 Set `MARVEL_PUBLIC_KEY` and `MARVEL_PRIVATE_KEY` in the local `.env` before starting real catalog requests. For installations using the old names, replace `MARVEL_PUBLICKEY`, `MARVEL_PRIVATEKEY`, and `MARVEL_URL` with `MARVEL_PUBLIC_KEY`, `MARVEL_PRIVATE_KEY`, and `MARVEL_BASE_URL`.
 
-The one-off key-generation command mounts the host `.env` explicitly so the generated key survives container removal. Use it for a new installation; an existing installation keeps its current `APP_KEY`. Subsequent starts use `docker compose up -d --build`.
+The one-off key-generation and migration commands above are for a new installation only. Key generation mounts the host `.env` explicitly so the key survives container removal. An existing installation keeps its current `APP_KEY` and requires review and explicit authorization before migrations. Container startup never runs migrations automatically. Subsequent starts use `docker compose up -d --build`.
 
 Open `http://localhost:8080`. `/health` checks application liveness; `/ready` checks access to the configured cache and whether Marvel credentials are present. It does not authenticate with Marvel or establish upstream availability. The Compose FPM healthcheck verifies a local TCP connection to port 9000.
 
@@ -70,7 +76,18 @@ pnpm run lint
 pnpm run test
 ```
 
-`resources/js/types/generated/api.d.ts` is generated from the local `docs/openapi.yaml`. After an approved contract change, run `pnpm run types:generate`, review the generated diff and run `types:check` before build/tests. Do not edit generated declarations by hand. A passing type check verifies static alignment, not runtime response validation. The Docker frontend build currently consumes committed declarations; the separate `types:check` command needs the contract file.
+`resources/js/types/generated/api.d.ts` is generated from the local `docs/openapi.yaml`. After an approved contract change, run `pnpm run types:generate`, review the generated diff and run `types:check` before build/tests. Do not edit generated declarations by hand. A passing type check verifies static alignment, not runtime response validation. The Docker frontend stage also copies the contract and runs `types:check` before building assets.
+
+### Integrated session validation
+
+```powershell
+docker build --target testing -t marvel-heroes-testing-identity .
+pnpm run test:full-stack
+```
+
+The runner creates a uniquely named Docker network, PostgreSQL database and Redis instance with no host volumes. It migrates only that new database, starts the Laravel HTTP kernel on loopback port 4174, and removes its containers/network on completion or failure. Only the application HTTP port is published. Marvel HTTP is simulated in a test-only router; no real credentials or upstream quota are used. `APP_ENV=integration` keeps real CSRF checks enabled, unlike PHPUnit's testing environment. This validates HTTP/session integration, not production Nginx/FPM, HTTPS termination or upstream availability. Do not use this router as a production entrypoint.
+
+Use `FULL_STACK_PORT` for another free port or `FULL_STACK_IMAGE` for a different freshly built testing image. Playwright requires its Chromium installation; an already installed Edge can be selected locally with `$env:PLAYWRIGHT_CHANNEL='msedge'`. Run browser suites sequentially to avoid sharing their compiled asset output. Production session cookies require HTTPS and `SESSION_SECURE_COOKIE=true`; local HTTP defaults must not be carried into production.
 
 The frontend tests cover text formatters, HTTP service cancellation/error mapping, collection request races/reset/disposal, character search/navigation, character detail and story comics loading. The search suite uses real Vue Router memory history and fake timers to verify the 300 ms debounce, query bounds, pagination and back/forward restoration without a DOM. The comics suite uses a reactive story ID and Vue effect scope to verify reloads on ID changes, pagination bounds, cancellation, late responses, empty results, error recovery and disposal. The detail suite verifies independent character/story loading and errors, ID changes, cancellation, obsolete responses, disposal, recovery and empty stories through the composable's exposed state. Its pagination tests cover story-only requests, page bounds, actions during loading, resets on character changes and recovery from a failed page. Controlled promises and a fake Axios transport keep the tests deterministic and offline. Mounted-page navigation, status rendering, keyboard accessibility and responsive visual behavior are checked separately by the browser suite below. Passing unit tests or the build alone is not evidence of complete browser workflows.
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted for the authentication implementation slice; no runtime implementation has started.
+Accepted and implemented for first-party sessions. External-client tokens remain deferred.
 
 ## Context
 

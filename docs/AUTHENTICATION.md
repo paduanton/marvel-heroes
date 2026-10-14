@@ -1,10 +1,10 @@
-# Authentication Plan
+# Authentication
 
 ## Decision
 
 The catalog remains anonymously readable. Authentication protects identity and future private capabilities; it is not a gate placed in front of character discovery.
 
-Laravel Sanctum is the selected mechanism. The first-party Vue SPA and Laravel are served from the same origin, so it will use Laravel session cookies, not browser-held Bearer tokens. `laravel_session` is `HttpOnly`, `Secure` in production, and `SameSite=Lax`; the separate `XSRF-TOKEN` cookie is sent as the CSRF header by Axios for state-changing requests.
+Laravel Sanctum authenticates the first-party Vue SPA using Laravel session cookies, not browser-held Bearer tokens. Both are served from the same origin. The default cookie is derived from `APP_NAME` (`marvel_heroes_session` with the example configuration), is `HttpOnly`, `Secure` in production, and `SameSite=Lax`. Axios initializes `/sanctum/csrf-cookie` and sends `X-XSRF-TOKEN` for session mutations. Laravel 13 can also trust secure same-origin Fetch Metadata; local HTTP falls back to CSRF token validation.
 
 Sanctum personal access tokens are reserved for a future external client or CLI. They are never issued to the first-party SPA and are stored and compared by Sanctum as hashes. OAuth2/Passport is deferred until third-party applications need delegated access to user-owned data.
 
@@ -19,16 +19,17 @@ Sanctum personal access tokens are reserved for a future external client or CLI.
 
 Protected endpoints return `401` for an unauthenticated request and `403` for an authenticated caller without the required policy or token ability. Public catalog endpoints never accept a Marvel credential from the browser.
 
-## Implementation order
+## Implemented boundary
 
-1. Add PostgreSQL only for identity records and Sanctum token records; catalog data continues to live in Redis and the upstream API.
-2. Install Sanctum, add stateful API middleware, configure the first-party domain, session cookie attributes, and CSRF flow.
-3. Create an `Identity` module with application actions for registration, login, logout, and current-user lookup. Controllers validate and serialize; policies own authorization.
-4. Add the users and Sanctum migrations, unique normalized email, password hashing through Laravel's configured hasher, session regeneration on login, and session invalidation on logout.
-5. Publish OpenAPI security schemes and contract tests for anonymous, `401`, `403`, CSRF, throttling, and logout behavior. The SPA adds only the CSRF bootstrap and session-aware Axios configuration.
-6. Add email verification and password reset when an email provider is selected. Add personal access tokens with narrow abilities and expiration only when an external consumer is a real product requirement.
+PostgreSQL stores identities; catalog content and request budgets remain in Redis. The `Identity` module provides registration and credential-checking actions, request validation, safe resources and a current-identity policy. Session operations remain at the HTTP boundary. Login and registration regenerate the session; logout invalidates it and regenerates CSRF. Identity and CSRF responses use `private, no-store`, without ETags; only catalog routes receive public HTTP caching.
 
-This is a security and runtime change. It requires explicit approval before dependency, migration, Docker, or public-contract edits are made.
+Emails are trimmed and lowercased before validation, lookup and persistence, with a database unique constraint. Registration requires matching passwords of at least 12 characters and at most 72 UTF-8 bytes, without null characters, matching the existing bcrypt hasher's limits. Login uses the same generic credential failure for unknown email and incorrect password. Registration is limited to five attempts per minute/IP; login to ten per minute/IP and five per normalized email/IP; private reads/mutations to sixty per minute/identity.
+
+The SPA exposes `/register`, `/login` and `/account`. It does not store credentials or tokens in browser storage and does not automatically replay failed mutations. A failed session check is not treated as anonymous unless the response is `401`.
+
+The Sanctum token table is provisioned, but there is no token issuance endpoint or token-enabled user trait. Email verification and password reset remain deferred until a mail provider is selected. External-client tokens require a separate approved capability with abilities, expiration and revocation. Registration currently proves possession of a password, not ownership of the supplied email address.
+
+Further credential, migration, Docker, session-security or protected-route changes require explicit approval. Existing databases must not be migrated automatically by agents or container startup. See [DEVELOPMENT.md](DEVELOPMENT.md) for setup and isolated HTTP validation.
 
 ## Secret handling
 

@@ -6,4 +6,4 @@ The catalog API validates query inputs, caps pagination, applies an IP-based rat
 
 Before production deployment, set `APP_DEBUG=false`, rotate any exposed credentials, provide secrets through the runtime platform, and terminate TLS at the ingress or load balancer.
 
-The public catalog uses rate limiting rather than user authentication. Future private capabilities use Sanctum session cookies with CSRF protection; the first-party SPA must not store access tokens in local storage.
+The public catalog uses rate limiting rather than user authentication. Identity endpoints use Sanctum session cookies, CSRF protection, private no-store responses and tighter login limits. Production requires HTTPS and `SESSION_SECURE_COOKIE=true`; the example disables secure cookies only for local HTTP. The first-party SPA must not store credentials or access tokens in browser storage. Email verification, recovery and external tokens remain deferred as described in [AUTHENTICATION.md](AUTHENTICATION.md).

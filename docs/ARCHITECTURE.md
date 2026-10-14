@@ -7,7 +7,7 @@ Vue SPA -> /api/v1 -> Application actions -> cached Marvel gateway -> Marvel API
                               |                    |
                               |                    +-> Redis (fresh/stale catalog entries and budget)
                               +-> API Resources
-                              +-> Identity/Sanctum (planned; not implemented)
+                              +-> Identity/Sanctum -> PostgreSQL (identity only)
 ```
 
 `app/Modules` holds product-facing behavior. `Application` coordinates a use case; `Domain` holds catalog vocabulary and durable rules; `Presentation` owns HTTP validation, status codes, and serialization. `app/Shared/Marvel` isolates signed upstream HTTP and payload normalization. The upstream response is never a public contract.
@@ -72,7 +72,7 @@ An invalid optional date does not discard the record, trigger a retry or prevent
 
 ## Future split
 
-The Vue client only calls `/api/v1`. Catalog models and resource responses are derived from `docs/openapi.yaml` using `openapi-typescript`; the generated declarations contain no runtime code. Run `pnpm run types:generate` after an approved contract change and `pnpm run types:check` to detect drift. Generated declarations must not be edited manually. This does not validate response bodies at runtime. The client can move to a separate deployment later without exposing Marvel credentials or redesigning the Laravel application layer.
+The Vue client calls the internal `/api/v1` interface and `/sanctum/csrf-cookie` for session bootstrap, never Marvel directly. Catalog models and resource responses are derived from `docs/openapi.yaml` using `openapi-typescript`; the generated declarations contain no runtime code. Run `pnpm run types:generate` after an approved contract change and `pnpm run types:check` to detect drift. Generated declarations must not be edited manually. This does not validate response bodies at runtime. The client can move to a separate deployment later without exposing Marvel credentials or redesigning the Laravel application layer.
 
 ### Frontend request lifecycle
 
@@ -122,13 +122,13 @@ Tests cover these interactions through a reactive ID and Vue effect scope, using
 
 ## Authentication boundary
 
-Catalog discovery is public. Sanctum, the `Identity` module and identity persistence are planned, not implemented. The design calls for session authentication followed by resource authorization through policies. Read [AUTHENTICATION.md](AUTHENTICATION.md) before implementing a protected endpoint.
+Catalog discovery remains public. The `Identity` module uses Sanctum first-party sessions and PostgreSQL for identity, with a policy protecting current-identity reads. Identity responses are private and non-cacheable. Read [AUTHENTICATION.md](AUTHENTICATION.md) before changing a protected endpoint or session behavior.
 
 ## Implementation limits
 
 - The refresh owner waits synchronously for Marvel; this is not background revalidation. Concurrent callers wait briefly for a lock before using stale data when available.
 - The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
-- HTTP caching currently applies to successful API GET responses. Restrict it to catalog routes before adding any authenticated or personalized endpoints.
+- Public HTTP caching applies only to successful named catalog GET routes, never to identity or CSRF responses.
 - Browser E2E tests exercise compiled pages with simulated API responses, including discovery, history, retries, pagination, keyboard focus, images and responsive content. They do not establish behavior against the real upstream or cover every possible route-driven update.
 - Real upstream behavior, refreshes outliving the lock and Redis outages remain unverified. The isolated Redis suite covers recovery after a terminated refresh owner once its lease expires, not lease renewal or rejection of writes from an expired owner.
