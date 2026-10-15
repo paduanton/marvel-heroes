@@ -3,6 +3,7 @@
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Http;
 use Monolog\Handler\NullHandler;
@@ -57,6 +58,13 @@ Http::fake(['marvel.test/*' => function () use ($options) {
 
 fwrite(STDERR, "READY\n");
 fgets(STDIN);
+if (isset($options['warm_queries'])) {
+    $exit = Artisan::call('marvel:cache:warm', [
+        '--query' => $options['warm_queries'], '--dry-run' => $options['dry_run'] ?? false,
+    ]);
+    echo json_encode(['exit' => $exit, 'output' => Artisan::output()], JSON_THROW_ON_ERROR);
+    exit;
+}
 $kernel = $app->make(Kernel::class);
 $request = Request::create($options['path'], 'GET', server: ['HTTP_ACCEPT' => 'application/json']);
 $response = $kernel->handle($request);
