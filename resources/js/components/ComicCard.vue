@@ -2,10 +2,10 @@
 import { computed } from 'vue';
 import CatalogImage from '@/components/CatalogImage.vue';
 import type { Comic } from '@/types/catalog';
-import { displayDate, excerpt } from '@/utils/formatters';
+import { displayPublicationDate, excerpt } from '@/utils/formatters';
 
 const props = defineProps<{ comic: Comic }>();
-const publicationDate = computed(() => displayDate(props.comic.on_sale_at));
+const publicationDate = computed(() => displayPublicationDate(props.comic.on_sale_at));
 </script>
 
 <template>

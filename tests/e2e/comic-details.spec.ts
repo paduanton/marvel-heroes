@@ -2,6 +2,28 @@ import { expect, test } from '@playwright/test';
 import type { Comic } from '../../resources/js/types/catalog';
 import { mockCatalog } from './catalog-fixture';
 
+for (const timezoneId of ['Pacific/Honolulu', 'Pacific/Kiritimati', 'UTC']) {
+  test.describe(`publication calendar in ${timezoneId}`, () => {
+    test.use({ timezoneId });
+    test('preserves the publisher day and displays a fallback for blank descriptions', async ({ page }) => {
+      await mockCatalog(page);
+      await page.route(url => url.pathname === '/api/v1/stories/101/comics', route => route.fulfill({ json: {
+        data: [
+          { id: 1, title: 'Early issue', description: ' \t ', on_sale_at: '2020-01-02T00:00:00+14:00', image_url: null },
+          { id: 2, title: 'Late issue', description: null, on_sale_at: '2020-01-02T23:00:00-12:00', image_url: null },
+        ], meta: { page: 1, per_page: 20, total: 2 },
+      } }));
+      await page.goto('/stories/101/comics');
+      const cards = page.getByRole('region', { name: 'Comic results', exact: true }).getByRole('article');
+      await expect(cards).toHaveCount(2);
+      for (const card of await cards.all()) {
+        await expect(card.locator('time')).toHaveText('Jan 2, 2020');
+        await expect(card.getByText('No official description is available for this comic.', { exact: true })).toBeVisible();
+      }
+    });
+  });
+}
+
 test('shows publication metadata without confusing missing comic descriptions with characters', async ({ page }, testInfo) => {
   await mockCatalog(page);
   const comic: Comic = {
