@@ -38,7 +38,7 @@ function submit() {
     </form>
   </section>
 
-  <section ref="resultsRegion" class="catalog-section retry-region" tabindex="-1" aria-label="Character results" aria-live="polite">
+  <section ref="resultsRegion" class="catalog-section retry-region" tabindex="-1" aria-label="Character results" :aria-busy="loading" aria-live="polite">
     <div class="section-heading">
       <p>{{ total }} characters in the archive</p>
     </div>

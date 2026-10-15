@@ -21,7 +21,7 @@ const { comics, total, page, perPage, loading, error, stale, first, next, previo
     <RouterLink class="back-link" :to="{ name: 'characters', query: catalogReturnQuery(route.query) }">Back to characters</RouterLink>
   </nav>
   <section class="catalog-hero catalog-hero--compact"><p class="eyebrow">Story library</p><h1>Related comics</h1><p class="lead">Browse the comic issues attached to this Marvel story.</p></section>
-  <section ref="resultsRegion" class="retry-region" tabindex="-1" aria-label="Comic results">
+  <section ref="resultsRegion" class="retry-region" tabindex="-1" aria-label="Comic results" :aria-busy="loading">
     <AsyncPanel :loading="loading" :error="error" :stale="stale" :empty="comics.length === 0" empty-message="No comics are available for this story.">
       <section class="comic-grid">
         <ComicCard v-for="comic in comics" :key="comic.id" :comic="comic" />

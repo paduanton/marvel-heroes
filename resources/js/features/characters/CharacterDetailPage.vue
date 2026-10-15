@@ -19,7 +19,7 @@ const { character, characterStale, stories, loading, error, retryCharacter, stor
 
 <template>
   <RouterLink class="back-link" :to="{ name: 'characters', query: catalogReturnQuery(route.query) }">Back to characters</RouterLink>
-  <section ref="characterRegion" class="retry-region" tabindex="-1" aria-label="Character details">
+  <section ref="characterRegion" class="retry-region" tabindex="-1" aria-label="Character details" :aria-busy="loading">
     <h1 v-if="!character">Character details</h1>
     <AsyncPanel :loading="loading" :error="error" :stale="characterStale" :empty="!character" empty-message="This character is not available.">
       <section v-if="character" class="character-hero">
@@ -37,7 +37,7 @@ const { character, characterStale, stories, loading, error, retryCharacter, stor
     <button v-if="error && !loading" type="button" class="retry-button" @click="focusActivatedRegion($event, characterRegion); retryCharacter()">Try character again</button>
   </section>
 
-  <section ref="storiesRegion" class="related-section retry-region" tabindex="-1" aria-label="Related stories">
+  <section ref="storiesRegion" class="related-section retry-region" tabindex="-1" aria-label="Related stories" :aria-busy="storiesLoading">
     <div class="section-heading"><div><p class="eyebrow">Related stories</p><h2>Stories to explore next</h2></div></div>
     <AsyncPanel :loading="storiesLoading" :error="storiesError" :stale="storiesStale" :empty="stories.length === 0" empty-message="No related stories are available for this character.">
       <div class="story-list">

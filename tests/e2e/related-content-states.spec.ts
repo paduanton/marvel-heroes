@@ -62,7 +62,7 @@ for (const scenario of scenarios) {
     const results = page.getByRole('region', { name: scenario.region, exact: true });
     await expect(results.getByText(scenario.empty, { exact: true })).toBeVisible();
     await expect(page.getByRole('alert')).toHaveCount(0);
-    await expect(results.getByRole('status')).toHaveCount(0);
+    await expect(results.getByRole('status')).toHaveText(scenario.empty);
     await expect(results.getByRole('button', { name: scenario.retry, exact: true })).toHaveCount(0);
     await expect(results.getByRole('navigation', { name: 'Catalog pages' })).toHaveCount(0);
 

@@ -33,7 +33,7 @@ test('shows an empty search without treating it as a failed request', async ({ p
   const emptyMessage = page.getByText('No characters match this search yet.', { exact: true });
   await expect(emptyMessage).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
-  await expect(page.getByRole('status')).toHaveCount(0);
+  await expect(page.getByRole('status')).toHaveText('No characters match this search yet.');
   await expect(page.getByRole('button', { name: 'Try characters again', exact: true })).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Catalog pages' })).toHaveCount(0);
 
