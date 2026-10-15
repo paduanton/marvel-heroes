@@ -35,10 +35,15 @@ $age = max(0, min(365, (int) $request->header('X-Marvel-Test-Age-Days', 0)));
 Date::setTestNow(fn ($realNow) => $realNow->addDays($age));
 $status = $request->header('X-Marvel-Test-Upstream-Status') === '503' ? 503 : 200;
 $name = $request->header('X-Marvel-Test-Revision') === '2' ? 'Recovered Hero' : 'Spider-Man';
+$journey = $request->header('X-Marvel-Test-Catalog') === 'journey' ? require __DIR__.'/paginated-catalog.php' : null;
 Http::preventStrayRequests();
-Http::fake(['*' => function () use ($status, $name) {
+Http::fake(['*' => function ($upstreamRequest) use ($status, $name, $journey) {
     Cache::add('test:upstream-calls', 0, now()->addHour());
     Cache::increment('test:upstream-calls');
+
+    if ($journey !== null) {
+        return Http::response($journey($upstreamRequest), $status);
+    }
 
     return Http::response(['data' => [
         'offset' => 0, 'limit' => 20, 'total' => 1, 'count' => 1,
