@@ -63,6 +63,7 @@ final class CachedMarvelCatalogGateway implements MarvelCatalogGateway
 
             return $this->refresh($key, $resource, $entry, $resolver);
         } catch (LockTimeoutException) {
+            Log::info('marvel.cache_lock_contended', ['resource' => $resource, 'stale_available' => $this->isStale($entry)]);
             if ($this->isStale($entry)) {
                 Log::info('marvel.cache_stale_lock', ['resource' => $resource]);
 
