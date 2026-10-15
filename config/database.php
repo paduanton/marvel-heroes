@@ -76,6 +76,9 @@ return [
             'prefix_indexes' => true,
             'schema' => 'public',
             'sslmode' => 'prefer',
+            'options' => [
+                PDO::ATTR_TIMEOUT => max(2, (int) env('DB_CONNECT_TIMEOUT', 2)),
+            ],
         ],
 
         'sqlsrv' => [

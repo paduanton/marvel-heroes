@@ -29,7 +29,7 @@ function cleanup() {
   if (stopped) return;
   stopped = true;
   for (const container of [...containers].reverse()) {
-    try { docker(['rm', '--force', container]); } catch { /* Already removed. */ }
+    try { docker(['rm', '--force', ...(container === postgres ? ['--volumes'] : []), container]); } catch { /* Already removed. */ }
   }
   if (edgeNetworkCreated) {
     try { docker(['network', 'rm', edgeNetwork]); } catch { /* Daemon may have stopped. */ }
@@ -59,17 +59,21 @@ try {
     docker(['network', 'create', edgeNetwork]);
     edgeNetworkCreated = true;
   }
-  docker(['run', '--detach', '--rm', '--name', postgres, '--network', network, '--network-alias', 'postgres', '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_USER=marvel', '--env', 'POSTGRES_DB=identity_test', 'postgres:17-alpine']);
+  docker(['run', '--detach', ...(nginx ? [] : ['--rm']), '--name', postgres, '--network', network, '--network-alias', 'postgres', '--label', `marvel-heroes.test-run=${run}`, '--env', 'POSTGRES_PASSWORD', '--env', 'POSTGRES_USER=marvel', '--env', 'POSTGRES_DB=identity_test', 'postgres:17-alpine']);
   containers.push(postgres);
   docker(['run', '--detach', '--rm', '--name', redis, '--network', network, '--network-alias', 'redis', '--label', `marvel-heroes.test-run=${run}`, 'redis:7.4-alpine', 'redis-server', '--save', '', '--appendonly', 'no']);
   containers.push(redis);
   await ready(postgres, ['pg_isready', '-U', 'marvel', '-d', 'identity_test']);
   await ready(redis, ['redis-cli', 'ping']);
+  // Keep PostgreSQL outage checks independent of Docker DNS removing a stopped container's name.
+  const databaseHost = nginx
+    ? JSON.parse(docker(['inspect', '--format', '{{json .NetworkSettings.Networks}}', postgres]))[network].IPAddress
+    : 'postgres';
   const settings = [
     'APP_ENV=integration', 'APP_DEBUG=false', 'APP_NAME=Marvel Heroes', 'APP_KEY',
     nginx ? 'MARVEL_DEPLOYMENT_TEST=1' : 'MARVEL_HTTP_TEST=1',
     `APP_URL=http://127.0.0.1:${port}`, `SANCTUM_STATEFUL_DOMAINS=127.0.0.1:${port}`,
-    'DB_CONNECTION=pgsql', 'DB_HOST=postgres', 'DB_PORT=5432', 'DB_DATABASE=identity_test', 'DB_USERNAME=marvel', 'DB_PASSWORD',
+    'DB_CONNECTION=pgsql', `DB_HOST=${databaseHost}`, 'DB_PORT=5432', 'DB_DATABASE=identity_test', 'DB_USERNAME=marvel', 'DB_PASSWORD',
     'CACHE_STORE=redis', 'REDIS_HOST=redis', 'SESSION_DRIVER=redis', 'SESSION_SECURE_COOKIE=false',
   ].flatMap(value => ['--env', value]);
   const mounts = (nginx ? [] : ['app', 'routes', 'config', 'database', 'resources/views', 'public/build', 'tests/Support', 'bootstrap/app.php'])
@@ -89,7 +93,7 @@ try {
     docker(['run', '--detach', '--rm', '--name', application, '--publish', `127.0.0.1:${port}:8000`, ...common, '-S', '0.0.0.0:8000', '-t', 'public', 'tests/Support/browser-router.php']);
     containers.push(application);
   }
-  process.send?.({ type: 'ready', run, redis, network });
+  process.send?.({ type: 'ready', run, redis, postgres, network });
   const logs = spawn('docker', ['logs', '--follow', application], { stdio: 'ignore' });
   logs.on('exit', code => { if (!stopped) { cleanup(); process.exit(code || 1); } });
   await new Promise(() => {});

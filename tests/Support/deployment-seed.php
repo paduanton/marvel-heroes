@@ -1,7 +1,9 @@
 <?php
 
 use App\Shared\Marvel\Contracts\MarvelCatalogGateway;
+use App\User;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 
 if (PHP_SAPI !== 'cli' || getenv('MARVEL_DEPLOYMENT_TEST') !== '1' || getenv('APP_ENV') !== 'integration' || getenv('DB_DATABASE') !== 'identity_test') {
@@ -29,4 +31,14 @@ $catalog->characters('sp', 0, 20);
 $catalog->character(1);
 $catalog->stories(1, 0, 10);
 $catalog->comics(101, 0, 20);
-echo "Synthetic deployment catalog prepared.\n";
+
+foreach (['desktop', 'mobile'] as $viewport) {
+    foreach (['login', 'session'] as $scenario) {
+        User::query()->create([
+            'name' => 'PostgreSQL Recovery Visitor',
+            'email' => "postgres-{$scenario}-{$viewport}@example.test",
+            'password' => Hash::make('valid-postgres-test-passphrase'),
+        ]);
+    }
+}
+echo "Synthetic deployment fixtures prepared.\n";
