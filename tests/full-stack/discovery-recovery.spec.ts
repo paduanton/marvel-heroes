@@ -1,0 +1,71 @@
+import { randomUUID } from 'node:crypto';
+import { expect, test } from '@playwright/test';
+
+test('recovers discovery from exhausted budget by returning to cached search results', async ({ page, context }) => {
+  const headers = { 'X-Marvel-Test-Scenario': randomUUID(), 'X-Marvel-Test-Budget': '1', 'X-Marvel-Test-Catalog': 'journey' };
+  await context.setExtraHTTPHeaders(headers);
+  await page.route('**/api/v1/**', route => route.continue());
+  await page.goto('/?query=sp');
+  const results = page.getByRole('region', { name: 'Character results', exact: true });
+  await expect(results.getByRole('link', { name: 'Spider-Man', exact: true })).toBeVisible();
+  const search = page.getByRole('searchbox', { name: 'Search characters' });
+  const failure = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/characters' && response.status() === 503);
+  await search.fill('iron');
+  const blocked = await failure;
+  expect((await blocked.json()).code).toBe('upstream-budget-exhausted');
+  expect(blocked.headers()['x-test-upstream-calls']).toBe('1');
+  await expect(results.getByRole('alert')).toHaveText('Catalog is temporarily unavailable. Please try again later.');
+  const retry = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/characters' && response.status() === 503);
+  await results.getByRole('button', { name: 'Try characters again' }).click();
+  expect((await retry).headers()['x-test-upstream-calls']).toBe('1');
+  await expect(results.getByRole('alert')).toBeVisible();
+  await search.fill('sp');
+  await expect(results.getByRole('link', { name: 'Spider-Man', exact: true })).toBeVisible();
+  await expect(results.getByRole('alert')).toHaveCount(0);
+  const cached = await context.request.get('/api/v1/characters?query=sp&page=1&per_page=20');
+  expect(cached.status()).toBe(200);
+  expect(cached.headers()['x-test-upstream-calls']).toBe('1');
+});
+
+test('cached stories remain navigable while a character fails and later recovers', async ({ page, context }) => {
+  const headers = { 'X-Marvel-Test-Scenario': randomUUID(), 'X-Marvel-Test-Catalog': 'journey' };
+  await context.setExtraHTTPHeaders(headers);
+  expect((await context.request.get('/api/v1/characters/1/stories?page=1&per_page=10')).status()).toBe(200);
+  await context.setExtraHTTPHeaders({ ...headers, 'X-Marvel-Test-Upstream-Status': '503' });
+  await page.route('**/api/v1/**', route => route.continue());
+  await page.goto('/characters/1');
+  const character = page.getByRole('region', { name: 'Character details', exact: true });
+  const stories = page.getByRole('region', { name: 'Related stories', exact: true });
+  await expect(character.getByRole('alert')).toBeVisible();
+  await expect(stories.getByRole('heading', { name: 'Origin of a hero', exact: true })).toBeVisible();
+  await expect(stories.getByRole('alert')).toHaveCount(0);
+  await context.setExtraHTTPHeaders(headers);
+  await character.getByRole('button', { name: 'Try character again' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(character.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
+  await expect(character).toBeFocused();
+  await stories.getByRole('link', { name: 'View comics', exact: true }).first().click();
+  await expect(page.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
+  const cached = await context.request.get('/api/v1/characters/1/stories?page=1&per_page=10');
+  expect(cached.headers()['x-test-upstream-calls']).toBe('4');
+});
+
+test('stale related comics survive source failure and refresh independently', async ({ page, context }) => {
+  const headers = { 'X-Marvel-Test-Scenario': randomUUID(), 'X-Marvel-Test-Catalog': 'journey' };
+  await context.setExtraHTTPHeaders(headers);
+  expect((await context.request.get('/api/v1/stories/101/comics?page=1&per_page=20')).status()).toBe(200);
+  await context.setExtraHTTPHeaders({ ...headers, 'X-Marvel-Test-Age-Days': '31', 'X-Marvel-Test-Upstream-Status': '503' });
+  await page.route('**/api/v1/**', route => route.continue());
+  await page.goto('/stories/101/comics');
+  const comics = page.getByRole('region', { name: 'Comic results', exact: true });
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
+  await expect(comics.getByRole('status')).toHaveText('Showing cached data. This information may be out of date.');
+  await expect(comics.getByRole('alert')).toHaveCount(0);
+  await context.setExtraHTTPHeaders({ ...headers, 'X-Marvel-Test-Age-Days': '31' });
+  await page.reload();
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
+  await expect(comics.getByRole('status')).toHaveCount(0);
+  const refreshed = await context.request.get('/api/v1/stories/101/comics?page=1&per_page=20');
+  expect((await refreshed.json()).meta.cache.state).toBe('fresh');
+  expect(refreshed.headers()['x-test-upstream-calls']).toBe('3');
+});
