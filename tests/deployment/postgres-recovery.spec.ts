@@ -186,3 +186,38 @@ test('PostgreSQL loss leaves registration anonymous until an explicit successful
     expect(registrationRequests).toBe(2);
   } finally { await outage.restore(); }
 });
+
+test('authenticated discovery remains public during PostgreSQL loss without discarding the session', async ({ page, context }) => {
+  const outage = postgresOutage();
+  const email = `postgres-session-${test.info().project.name}@example.test`;
+  // Exercise the real API instead of reusing the browser's cached catalog response.
+  await page.route('**/api/v1/**', route => route.continue());
+  await page.goto('/login');
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill('valid-postgres-test-passphrase');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
+  try {
+    outage.stop();
+    const catalogResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/characters');
+    await page.getByRole('link', { name: 'Browse characters', exact: true }).click();
+    const catalog = await catalogResponse;
+    expect(catalog.status()).toBe(200);
+    expect(catalog.headers()['cache-control']).toContain('public');
+    expect(catalog.headers()['set-cookie']).toBeUndefined();
+    await expect(page.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'Spider-Man', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Origin of a hero', exact: true })).toBeVisible();
+    await page.getByRole('link', { name: 'View comics', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath('postgres-authenticated-discovery.png'), fullPage: true });
+    await expectIdentityUnavailable(await context.request.get('/api/v1/me'));
+    await outage.restore();
+    const me = await context.request.get('/api/v1/me');
+    expect(me.status()).toBe(200);
+    expect(await me.json()).toMatchObject({ data: { email } });
+    await page.getByRole('link', { name: 'Account', exact: true }).click();
+    await expect(page.getByText(email, { exact: true })).toBeVisible();
+  } finally { await outage.restore(); }
+});

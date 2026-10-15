@@ -114,6 +114,7 @@ paths:
   /characters:
     get:
       summary: List catalog characters
+      description: Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
       parameters:
         - $ref: '#/components/parameters/SearchQuery'
         - $ref: '#/components/parameters/Page'
@@ -136,6 +137,7 @@ paths:
   /characters/{characterId}:
     get:
       summary: Get one character
+      description: Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
       parameters:
         - $ref: '#/components/parameters/CharacterId'
       responses:
@@ -154,6 +156,7 @@ paths:
   /characters/{characterId}/stories:
     get:
       summary: List stories related to a character
+      description: Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
       parameters:
         - $ref: '#/components/parameters/CharacterId'
         - $ref: '#/components/parameters/Page'
@@ -178,6 +181,7 @@ paths:
   /stories/{storyId}/comics:
     get:
       summary: List comics related to a story
+      description: Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
       parameters:
         - $ref: '#/components/parameters/StoryId'
         - $ref: '#/components/parameters/Page'

@@ -317,7 +317,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List catalog characters */
+        /**
+         * List catalog characters
+         * @description Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
+         */
         get: {
             parameters: {
                 query?: {
@@ -363,7 +366,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one character */
+        /**
+         * Get one character
+         * @description Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -405,7 +411,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List stories related to a character */
+        /**
+         * List stories related to a character
+         * @description Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
+         */
         get: {
             parameters: {
                 query?: {
@@ -453,7 +462,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List comics related to a story */
+        /**
+         * List comics related to a story
+         * @description Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
+         */
         get: {
             parameters: {
                 query?: {
