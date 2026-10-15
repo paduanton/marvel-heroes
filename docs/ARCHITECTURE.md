@@ -108,7 +108,7 @@ Tests use a reactive story ID, a Vue effect scope and a simulated Axios transpor
 
 ### Character detail lifecycle
 
-`useCharacterDetail` watches the character ID supplied by the page. Each change clears the previous character, stories and errors and starts independent requests for the character and the first ten stories. The character becomes available as soon as its own request completes. Slow or failed stories affect only the related section's loading/error/empty state; they do not hide a successfully loaded character. A character error remains the page-level error, so related content is shown only after a character is available.
+`useCharacterDetail` watches the character ID supplied by the page. Each change clears the previous character, stories and errors and starts independent requests for the character and the first ten stories. Each section renders its own loading/error/empty state: a character failure does not hide available stories, and a story failure does not hide the character. Retrying the character does not reset or reload stories.
 
 Changing IDs aborts both previous requests. Each character request checks its own abort signal before updating the resource, error or loading state; stories reuse `useAsyncCollection`. Scope disposal cancels pending requests and ends both loading states. A later character change recovers from either failure without preserving the previous character's data. An unchanged ID does not reload.
 
@@ -131,4 +131,4 @@ Catalog discovery remains public. The `Identity` module uses Sanctum first-party
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - Public HTTP caching applies only to successful named catalog GET routes, never to identity or CSRF responses.
 - Browser E2E tests exercise compiled pages with simulated API responses, including discovery, history, retries, pagination, keyboard focus, images and responsive content. They do not establish behavior against the real upstream or cover every possible route-driven update.
-- Real upstream behavior, refreshes outliving the lock and Redis outages remain unverified. The isolated Redis suite covers recovery after a terminated refresh owner once its lease expires, not lease renewal or rejection of writes from an expired owner.
+- Real upstream behavior and refreshes outliving the lock remain unverified. Disposable Nginx/FPM checks cover Redis connectivity loss and recovery as bounded in [DEVELOPMENT.md](DEVELOPMENT.md#nginx-and-php-fpm-validation), not Redis data loss or high availability. The isolated Redis suite covers recovery after a terminated refresh owner once its lease expires, not lease renewal or rejection of writes from an expired owner.

@@ -4,7 +4,7 @@
 
 - Docker Desktop with the Linux container engine running.
 - Marvel public and private credentials for real catalog requests.
-- Node 22+ and the pnpm version pinned in `package.json` for host-side frontend checks.
+- Node 22.12+ and the pnpm version pinned in `package.json` for host-side frontend and commit checks.
 
 Local secrets belong in the ignored `.env`. The example contains names and defaults only. Application code reads configuration; production secrets must be injected at runtime into PHP. No Marvel credentials are required for the isolated tests below.
 
