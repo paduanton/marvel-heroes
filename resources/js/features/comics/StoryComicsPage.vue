@@ -12,7 +12,7 @@ const props = defineProps<{ id: string }>();
 const route = useRoute();
 const characterId = computed(() => returnCharacterId(route.query));
 const resultsRegion = ref<HTMLElement | null>(null);
-const { comics, total, page, perPage, loading, error, stale, next, previous, retry } = useStoryComics(() => props.id);
+const { comics, total, page, perPage, loading, error, stale, first, next, previous, retry } = useStoryComics(() => props.id);
 </script>
 
 <template>
@@ -28,7 +28,7 @@ const { comics, total, page, perPage, loading, error, stale, next, previous, ret
       </section>
     </AsyncPanel>
     <button v-if="error && !loading" type="button" class="retry-comics" @click="focusActivatedRegion($event, resultsRegion); retry()">Try comics again</button>
-    <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" :focus-target="resultsRegion" @previous="previous" @next="next" />
+    <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" :focus-target="resultsRegion" @first="first" @previous="previous" @next="next" />
   </section>
 </template>
 

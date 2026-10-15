@@ -64,6 +64,10 @@ export function useCharacterCatalog(router: Router) {
     }
   }
 
+  function first() {
+    if (!disposed && !collection.loading.value && page.value > 1) return navigate(appliedQuery.value, 1);
+  }
+
   function previous() {
     if (!disposed && !collection.loading.value && page.value > 1) {
       return navigate(appliedQuery.value, page.value - 1);
@@ -106,5 +110,5 @@ export function useCharacterCatalog(router: Router) {
     clearTimeout(debounceTimer);
   });
 
-  return { ...collection, search, page, perPage, title, next, previous, retry, canRetry, submitSearch, clearSearch };
+  return { ...collection, search, page, perPage, title, first, next, previous, retry, canRetry, submitSearch, clearSearch };
 }

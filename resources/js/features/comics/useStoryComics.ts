@@ -18,6 +18,12 @@ export function useStoryComics(storyId: () => string) {
     return load();
   }
 
+  function first() {
+    if (loading.value || page.value <= 1) return;
+    page.value = 1;
+    return load();
+  }
+
   function previous() {
     if (loading.value || page.value <= 1) return;
     page.value -= 1;
@@ -35,5 +41,5 @@ export function useStoryComics(storyId: () => string) {
     void load();
   }, { immediate: true });
 
-  return { comics, total, page, perPage, loading, error, stale, next, previous, retry };
+  return { comics, total, page, perPage, loading, error, stale, first, next, previous, retry };
 }

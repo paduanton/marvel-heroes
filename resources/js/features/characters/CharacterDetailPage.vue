@@ -14,7 +14,7 @@ const route = useRoute();
 const characterRegion = ref<HTMLElement | null>(null);
 const storiesRegion = ref<HTMLElement | null>(null);
 const { character, characterStale, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
-  storiesPage, storiesPerPage, storiesTotal, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id);
+  storiesPage, storiesPerPage, storiesTotal, firstStories, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id);
 </script>
 
 <template>
@@ -44,7 +44,7 @@ const { character, characterStale, stories, loading, error, retryCharacter, stor
           </div>
         </AsyncPanel>
         <button v-if="storiesError && !storiesLoading" type="button" class="retry-stories" @click="focusActivatedRegion($event, storiesRegion); retryStories()">Try stories again</button>
-        <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" :focus-target="storiesRegion" @previous="previousStories" @next="nextStories" />
+        <PaginationControls v-if="!storiesLoading" :page="storiesPage" :per-page="storiesPerPage" :total="storiesTotal" :focus-target="storiesRegion" @first="firstStories" @previous="previousStories" @next="nextStories" />
       </section>
     </AsyncPanel>
     <button v-if="error && !loading" type="button" class="retry-button" @click="focusActivatedRegion($event, characterRegion); retryCharacter()">Try character again</button>
