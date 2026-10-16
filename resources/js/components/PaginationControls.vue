@@ -10,6 +10,7 @@ const hasNext = () => props.page * props.perPage < props.total;
 
 function navigate(event: MouseEvent, direction: 'first' | 'previous' | 'next') {
   focusActivatedRegion(event, props.focusTarget ?? null);
+  props.focusTarget?.scrollIntoView({ block: 'start' });
   if (direction === 'first') emit('first');
   else if (direction === 'previous') emit('previous');
   else emit('next');

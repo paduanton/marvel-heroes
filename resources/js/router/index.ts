@@ -15,5 +15,5 @@ export default createRouter({
     { path: '/stories/:id/comics', name: 'story-comics', component: StoryComicsPage, props: true, meta: { title: 'Related comics' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
-  scrollBehavior: () => ({ top: 0 }),
+  scrollBehavior: (to, from, savedPosition) => savedPosition ?? (to.path === from.path ? false : { top: 0 }),
 });
