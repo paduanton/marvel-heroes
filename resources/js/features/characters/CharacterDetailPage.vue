@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { catalogReturnQuery } from './catalogNavigation';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import CatalogImage from '@/components/CatalogImage.vue';
@@ -14,7 +14,7 @@ const route = useRoute();
 const characterRegion = ref<HTMLElement | null>(null);
 const storiesRegion = ref<HTMLElement | null>(null);
 const { character, characterStale, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
-  storiesPage, storiesPerPage, storiesTotal, firstStories, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id);
+  storiesPage, storiesPerPage, storiesTotal, firstStories, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id, useRouter());
 </script>
 
 <template>
@@ -43,7 +43,7 @@ const { character, characterStale, stories, loading, error, retryCharacter, stor
       <div class="story-list">
         <article v-for="story in stories" :key="story.id" class="story-item">
           <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>
-          <RouterLink :to="{ name: 'story-comics', params: { id: story.id }, query: { ...catalogReturnQuery(route.query), character: props.id } }">View comics</RouterLink>
+          <RouterLink :to="{ name: 'story-comics', params: { id: story.id }, query: { ...route.query, character: props.id } }">View comics</RouterLink>
         </article>
       </div>
     </AsyncPanel>

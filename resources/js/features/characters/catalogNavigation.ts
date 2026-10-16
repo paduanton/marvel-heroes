@@ -1,8 +1,14 @@
-import type { LocationQuery } from 'vue-router';
+import type { LocationQuery, LocationQueryValue } from 'vue-router';
+
+export function catalogPage(value: LocationQueryValue | LocationQueryValue[] | undefined): number {
+  const parsed = typeof value === 'string' && /^[1-9][0-9]*$/.test(value) ? Number(value) : 1;
+  return Number.isSafeInteger(parsed) ? parsed : 1;
+}
 
 export function catalogReturnQuery(query: LocationQuery): LocationQuery {
   const result = { ...query };
   delete result.character;
+  delete result.stories_page;
   return result;
 }
 

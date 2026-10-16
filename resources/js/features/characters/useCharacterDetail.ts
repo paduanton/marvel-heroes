@@ -1,13 +1,16 @@
-import { onScopeDispose, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
+import type { Router } from 'vue-router';
 import { useAsyncCollection } from '@/composables/useAsyncCollection';
 import { getCharacter, listStories } from '@/services/catalog';
 import type { Character, Story } from '@/types/catalog';
+import { catalogPage } from './catalogNavigation';
 
-export function useCharacterDetail(characterId: () => string) {
+export function useCharacterDetail(characterId: () => string, router?: Router) {
   const character = ref<Character | null>(null);
   const { items: stories, total: storiesTotal, loading: storiesLoading, error: storiesError, stale: storiesStale, load: loadStories, reset: resetStories } = useAsyncCollection<Story>();
   const characterStale = ref(false);
-  const storiesPage = ref(1);
+  const localStoriesPage = ref(1);
+  const storiesPage = computed(() => router ? catalogPage(router.currentRoute.value.query.stories_page) : localStoriesPage.value);
   const storiesPerPage = 10;
   const loading = ref(true);
   const error = ref<string | null>(null);
@@ -53,34 +56,43 @@ export function useCharacterDetail(characterId: () => string) {
   }
 
   function nextStories() {
-    if (storiesLoading.value || storiesPage.value * storiesPerPage >= storiesTotal.value) return;
-    storiesPage.value += 1;
-    return loadStoriesPage(characterId());
+    if (disposed || storiesLoading.value || storiesPage.value * storiesPerPage >= storiesTotal.value) return;
+    return changeStoriesPage(storiesPage.value + 1);
   }
 
   function retryStories() {
-    if (storiesLoading.value || !storiesError.value) return;
+    if (disposed || storiesLoading.value || !storiesError.value) return;
     return loadStoriesPage(characterId());
   }
 
   function firstStories() {
     if (disposed || storiesLoading.value || storiesPage.value <= 1) return;
-    storiesPage.value = 1;
-    return loadStoriesPage(characterId());
+    return changeStoriesPage(1);
   }
 
   function previousStories() {
-    if (storiesLoading.value || storiesPage.value <= 1) return;
-    storiesPage.value -= 1;
+    if (disposed || storiesLoading.value || storiesPage.value <= 1) return;
+    return changeStoriesPage(storiesPage.value - 1);
+  }
+
+  function changeStoriesPage(page: number) {
+    if (router) return router.push({
+      name: 'character-detail', params: { id: characterId() },
+      query: { ...router.currentRoute.value.query, stories_page: page > 1 ? String(page) : undefined },
+    });
+    localStoriesPage.value = page;
     return loadStoriesPage(characterId());
   }
 
   watch(characterId, (id) => {
     character.value = null;
-    storiesPage.value = 1;
+    localStoriesPage.value = 1;
     resetStories();
     void load(id);
-    void loadStoriesPage(id);
+    if (!router) void loadStoriesPage(id);
+  }, { immediate: true });
+  if (router) watch([characterId, storiesPage], ([id]) => {
+    if (router.currentRoute.value.name === 'character-detail') void loadStoriesPage(id);
   }, { immediate: true });
   return { character, characterStale, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
     storiesPage, storiesPerPage, storiesTotal, firstStories, nextStories, previousStories, retryStories };
