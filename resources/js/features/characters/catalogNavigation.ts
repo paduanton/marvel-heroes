@@ -6,9 +6,15 @@ export function catalogPage(value: LocationQueryValue | LocationQueryValue[] | u
 }
 
 export function catalogReturnQuery(query: LocationQuery): LocationQuery {
+  const result = characterReturnQuery(query);
+  delete result.stories_page;
+  return result;
+}
+
+export function characterReturnQuery(query: LocationQuery): LocationQuery {
   const result = { ...query };
   delete result.character;
-  delete result.stories_page;
+  delete result.comics_page;
   return result;
 }
 

@@ -21,3 +21,32 @@ test('restores story pagination through reload and browser history', async ({ pa
   await page.goForward();
   await expect(stories.getByRole('heading', { name: 'Origin of a hero', exact: true })).toBeVisible();
 });
+
+test('restores comic pages and returns to the original story and catalog pages', async ({ page }) => {
+  await mockCatalog(page);
+  await page.goto('/characters/1?query=sp&page=2&stories_page=2&source=portfolio');
+  const stories = page.getByRole('region', { name: 'Related stories', exact: true });
+  await expect(stories.getByRole('heading', { name: 'Next adventure', exact: true })).toBeVisible();
+  await stories.getByRole('link', { name: 'View comics', exact: true }).click();
+  const comics = page.getByRole('region', { name: 'Comic results', exact: true });
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
+  await comics.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #2', exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('comics_page')).toBe('2');
+  await page.reload();
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #2', exact: true })).toBeVisible();
+  await comics.getByRole('button', { name: 'First page', exact: true }).click();
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.has('comics_page')).toBe(false);
+  await page.goBack();
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #2', exact: true })).toBeVisible();
+  await page.goForward();
+  await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to character', exact: true }).click();
+  await expect(stories.getByRole('heading', { name: 'Next adventure', exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.has('character')).toBe(false);
+  expect(new URL(page.url()).searchParams.has('comics_page')).toBe(false);
+  await page.getByRole('link', { name: 'Back to characters', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Search characters' })).toHaveValue('sp');
+  expect(new URL(page.url()).search).toBe('?query=sp&page=2&source=portfolio');
+});

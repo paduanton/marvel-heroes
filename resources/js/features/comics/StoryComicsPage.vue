@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { RouterLink, useRoute } from 'vue-router';
-import { catalogReturnQuery, returnCharacterId } from '@/features/characters/catalogNavigation';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
+import { catalogReturnQuery, characterReturnQuery, returnCharacterId } from '@/features/characters/catalogNavigation';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import ComicCard from '@/components/ComicCard.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
@@ -12,12 +12,12 @@ const props = defineProps<{ id: string }>();
 const route = useRoute();
 const characterId = computed(() => returnCharacterId(route.query));
 const resultsRegion = ref<HTMLElement | null>(null);
-const { comics, total, page, perPage, loading, error, stale, first, next, previous, retry } = useStoryComics(() => props.id);
+const { comics, total, page, perPage, loading, error, stale, first, next, previous, retry } = useStoryComics(() => props.id, useRouter());
 </script>
 
 <template>
   <nav class="discovery-return" aria-label="Return navigation">
-    <RouterLink v-if="characterId" class="back-link" :to="{ name: 'character-detail', params: { id: characterId }, query: catalogReturnQuery(route.query) }">Back to character</RouterLink>
+    <RouterLink v-if="characterId" class="back-link" :to="{ name: 'character-detail', params: { id: characterId }, query: characterReturnQuery(route.query) }">Back to character</RouterLink>
     <RouterLink class="back-link" :to="{ name: 'characters', query: catalogReturnQuery(route.query) }">Back to characters</RouterLink>
   </nav>
   <section class="catalog-hero catalog-hero--compact"><p class="eyebrow">Story library</p><h1>Related comics</h1><p class="lead">Browse the comic issues attached to this Marvel story.</p></section>
