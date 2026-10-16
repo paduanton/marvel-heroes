@@ -209,7 +209,7 @@ test('authenticated discovery remains public during PostgreSQL loss without disc
     await expect(page.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
     await page.getByRole('link', { name: 'Spider-Man', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Origin of a hero', exact: true })).toBeVisible();
-    await page.getByRole('link', { name: 'View comics', exact: true }).click();
+    await page.getByRole('link', { name: 'View comics', exact: true }).first().click();
     await expect(page.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
     await page.screenshot({ path: test.info().outputPath('postgres-authenticated-discovery.png'), fullPage: true });
     await expectIdentityUnavailable(await context.request.get('/api/v1/me'));

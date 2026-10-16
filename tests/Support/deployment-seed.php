@@ -15,22 +15,20 @@ $app = require '/var/www/html/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 config(['marvel.base_url' => 'https://marvel.test/v1/public', 'marvel.public_key' => 'test-only', 'marvel.private_key' => 'test-only']);
 Http::preventStrayRequests();
-Http::fake(function ($request) {
-    $record = match (true) {
-        str_contains($request->url(), '/comics') => ['id' => 1001, 'title' => 'Amazing Spider-Man #1', 'description' => 'A synthetic comic.', 'format' => 'Comic'],
-        str_contains($request->url(), '/stories') => ['id' => 101, 'title' => 'Origin of a hero', 'type' => 'story', 'comics' => ['available' => 1]],
-        default => ['id' => 1, 'name' => 'Spider-Man', 'description' => 'A synthetic character for deployment validation.'],
-    };
-
-    return Http::response(['data' => ['results' => [$record], 'total' => 1]]);
-});
+$source = require '/var/www/html/tests/Support/paginated-catalog.php';
+Http::fake(fn ($request) => Http::response($source($request)));
 
 $catalog = $app->make(MarvelCatalogGateway::class);
 $catalog->characters('', 0, 20);
+$catalog->characters('', 20, 20);
 $catalog->characters('sp', 0, 20);
 $catalog->character(1);
 $catalog->stories(1, 0, 10);
+$catalog->stories(1, 10, 10);
 $catalog->comics(101, 0, 20);
+$catalog->comics(101, 20, 20);
+$catalog->comics(111, 0, 20);
+$catalog->comics(111, 20, 20);
 
 foreach (['desktop', 'mobile'] as $viewport) {
     foreach (['login', 'session'] as $scenario) {

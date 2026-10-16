@@ -16,7 +16,7 @@ test('built assets and discovery work through Nginx and PHP-FPM, including direc
   await expect(page.getByRole('heading', { name: 'Origin of a hero', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
-  await page.getByRole('link', { name: 'View comics', exact: true }).click();
+  await page.getByRole('link', { name: 'View comics', exact: true }).first().click();
   await expect(page.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
