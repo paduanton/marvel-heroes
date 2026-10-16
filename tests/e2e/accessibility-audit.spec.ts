@@ -1,20 +1,6 @@
-import AxeBuilder from '@axe-core/playwright';
-import { writeFile } from 'node:fs/promises';
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { audit } from '../Support/accessibility';
 import { mockCatalog } from './catalog-fixture';
-
-async function audit(page: Page, testInfo: TestInfo) {
-  const results = await new AxeBuilder({ page }).analyze();
-  const summarize = (items: typeof results.violations) => items.map(item => ({
-    rule: item.id, impact: item.impact, help: item.help, helpUrl: item.helpUrl,
-    nodes: item.nodes.map(node => ({ target: node.target, failure: node.failureSummary })),
-  }));
-  const report = { engine: results.testEngine, violations: summarize(results.violations), incomplete: summarize(results.incomplete) };
-  const path = testInfo.outputPath('accessibility.json');
-  await writeFile(path, JSON.stringify(report, null, 2));
-  await testInfo.attach('accessibility.json', { path, contentType: 'application/json' });
-  expect(report.violations).toEqual([]);
-}
 
 const resources = [
   { url: '/', path: '/api/v1/characters', region: 'Character results', heading: 'Spider-Man', empty: 'No characters match this search yet.', perPage: 20 },
