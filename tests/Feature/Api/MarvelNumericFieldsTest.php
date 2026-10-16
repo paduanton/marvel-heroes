@@ -77,6 +77,30 @@ class MarvelNumericFieldsTest extends TestCase
         $this->getJson('/api/v1/stories/1/comics')->assertOk()->assertJsonPath('data.0.digital_id', null);
     }
 
+    #[DataProvider('unsafeDigitalIds')]
+    public function test_unsafe_digital_ids_become_null_without_discarding_the_comic(int $id): void
+    {
+        $this->fakeRecord(['digitalId' => $id]);
+        for ($request = 0; $request < 2; $request++) {
+            $this->getJson('/api/v1/stories/1/comics')->assertOk()
+                ->assertJsonPath('data.0.id', 1)->assertJsonPath('data.0.digital_id', null);
+        }
+        Http::assertSentCount(1);
+    }
+
+    public static function unsafeDigitalIds(): array
+    {
+        return ['next integer' => [9007199254740992], 'PHP maximum' => [PHP_INT_MAX]];
+    }
+
+    public function test_the_largest_safe_digital_id_remains_cacheable(): void
+    {
+        $this->fakeRecord(['digitalId' => 9007199254740991]);
+        $this->getJson('/api/v1/stories/1/comics')->assertOk()->assertJsonPath('data.0.digital_id', 9007199254740991);
+        $this->getJson('/api/v1/stories/1/comics')->assertOk()->assertJsonPath('data.0.digital_id', 9007199254740991);
+        Http::assertSentCount(1);
+    }
+
     #[DataProvider('negativePrices')]
     public function test_a_negative_price_is_skipped_in_favor_of_a_valid_later_entry(mixed $price): void
     {

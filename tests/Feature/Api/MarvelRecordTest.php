@@ -74,6 +74,8 @@ class MarvelRecordTest extends TestCase
                 'negative ID' => ['id' => -1, $label => 'Example'],
                 'string ID' => ['id' => '1', $label => 'Example'],
                 'fractional ID' => ['id' => 1.5, $label => 'Example'],
+                'unsafe integer ID' => ['id' => 9007199254740992, $label => 'Example'],
+                'maximum PHP integer ID' => ['id' => PHP_INT_MAX, $label => 'Example'],
                 'missing label' => ['id' => 1],
                 'null label' => ['id' => 1, $label => null],
                 'blank label' => ['id' => 1, $label => " \t\n "],
@@ -84,6 +86,37 @@ class MarvelRecordTest extends TestCase
                 yield $resource.'/'.$case => [$path, $record];
             }
         }
+    }
+
+    #[DataProvider('resources')]
+    public function test_it_preserves_the_largest_safe_record_id(string $path, string $label, string $recordPath): void
+    {
+        Http::fake(['marvel.test/*' => Http::response(['data' => [
+            'results' => [['id' => 9007199254740991, $label => 'Boundary record']], 'total' => 1,
+        ]])]);
+
+        $this->getJson($path)->assertOk()->assertJsonPath($recordPath.'.id', 9007199254740991);
+        $this->getJson($path)->assertOk()->assertJsonPath($recordPath.'.id', 9007199254740991);
+        Http::assertSentCount(1);
+    }
+
+    #[DataProvider('resources')]
+    public function test_an_unsafe_refresh_preserves_stale_data_until_a_valid_recovery(string $path, string $label, string $recordPath): void
+    {
+        Http::fake(['marvel.test/*' => Http::sequence()
+            ->push(['data' => ['results' => [['id' => 1, $label => 'Original']], 'total' => 1]])
+            ->push(['data' => ['results' => [['id' => 9007199254740992, $label => 'Unsafe']], 'total' => 1]])
+            ->push(['data' => ['results' => [['id' => 2, $label => 'Recovered']], 'total' => 1]])]);
+
+        $this->getJson($path)->assertOk()->assertJsonPath($recordPath.'.id', 1);
+        $this->travel(31)->days();
+        $this->getJson($path)->assertOk()
+            ->assertJsonPath($recordPath.'.id', 1)->assertJsonPath('meta.cache.state', 'stale');
+        Http::assertSentCount(2);
+        $this->getJson($path)->assertOk()
+            ->assertJsonPath($recordPath.'.id', 2)->assertJsonPath('meta.cache.state', 'fresh');
+        $this->getJson($path)->assertOk()->assertJsonPath($recordPath.'.id', 2);
+        Http::assertSentCount(3);
     }
 
     #[DataProvider('resources')]

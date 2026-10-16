@@ -2,6 +2,7 @@
 
 namespace App\Shared\Marvel;
 
+use App\Modules\Characters\Domain\CatalogLimits;
 use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
 use DateTimeImmutable;
 
@@ -55,7 +56,7 @@ final class MarvelPayloadNormalizer
 
     private function recordId(mixed $value): int
     {
-        if (! is_int($value) || $value < 1) {
+        if (! is_int($value) || $value < 1 || $value > CatalogLimits::MAX_ID) {
             throw new MarvelUnavailableException('Marvel API returned an invalid record ID.');
         }
 
@@ -170,6 +171,6 @@ final class MarvelPayloadNormalizer
 
     private function digitalId(mixed $value): ?int
     {
-        return is_int($value) && $value > 0 ? $value : null;
+        return is_int($value) && $value > 0 && $value <= CatalogLimits::MAX_ID ? $value : null;
     }
 }

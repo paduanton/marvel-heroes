@@ -310,7 +310,7 @@ components:
       type: object
       required: [id, name, description, modified_at, image_url]
       properties:
-        id: { type: integer }
+        id: { type: integer, minimum: 1, maximum: 9007199254740991 }
         name: { type: string }
         description: { type: [string, 'null'] }
         modified_at: { type: [string, 'null'], format: date-time }
@@ -319,7 +319,7 @@ components:
       type: object
       required: [id, title, type, modified_at, counts]
       properties:
-        id: { type: integer }
+        id: { type: integer, minimum: 1, maximum: 9007199254740991 }
         title: { type: string }
         type: { type: [string, 'null'] }
         modified_at: { type: [string, 'null'], format: date-time }
@@ -330,8 +330,8 @@ components:
       type: object
       required: [id, title, description, format, modified_at, on_sale_at, digital_price, image_url]
       properties:
-        id: { type: integer }
-        digital_id: { type: [integer, 'null'] }
+        id: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        digital_id: { type: [integer, 'null'], minimum: 1, maximum: 9007199254740991 }
         title: { type: string }
         description: { type: [string, 'null'] }
         format: { type: [string, 'null'] }
