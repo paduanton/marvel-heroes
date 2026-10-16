@@ -35,9 +35,14 @@ $age = max(0, min(365, (int) $request->header('X-Marvel-Test-Age-Days', 0)));
 Date::setTestNow(fn ($realNow) => $realNow->addDays($age));
 $status = $request->header('X-Marvel-Test-Upstream-Status') === '503' ? 503 : 200;
 $name = $request->header('X-Marvel-Test-Revision') === '2' ? 'Recovered Hero' : 'Spider-Man';
+$recordId = match ($request->header('X-Marvel-Test-Record-Id')) {
+    'safe-limit' => 9007199254740991,
+    'unsafe' => 9007199254740992,
+    default => 1,
+};
 $journey = $request->header('X-Marvel-Test-Catalog') === 'journey' ? require __DIR__.'/paginated-catalog.php' : null;
 Http::preventStrayRequests();
-Http::fake(['*' => function ($upstreamRequest) use ($status, $name, $journey) {
+Http::fake(['*' => function ($upstreamRequest) use ($status, $name, $recordId, $journey) {
     Cache::add('test:upstream-calls', 0, now()->addHour());
     Cache::increment('test:upstream-calls');
 
@@ -47,7 +52,7 @@ Http::fake(['*' => function ($upstreamRequest) use ($status, $name, $journey) {
 
     return Http::response(['data' => [
         'offset' => 0, 'limit' => 20, 'total' => 1, 'count' => 1,
-        'results' => [['id' => 1, 'name' => $name, 'title' => $name, 'description' => 'A browser test character.', 'modified' => null]],
+        'results' => [['id' => $recordId, 'digitalId' => $recordId === 1 ? null : $recordId, 'name' => $name, 'title' => $name, 'description' => 'A browser test character.', 'modified' => null]],
     ]], $status);
 }]);
 $response = $kernel->handle($request);
