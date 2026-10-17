@@ -22,6 +22,17 @@ register_shutdown_function(static function () use ($directory): void {
     file_put_contents($directory.'/completed.jsonl', "done\n", FILE_APPEND | LOCK_EX);
 });
 
+if (isset($state['expected_query'])) {
+    $parameters = array_diff_key($_GET, array_flip(['ts', 'apikey', 'hash']));
+    $expected = $state['expected_query'];
+    ksort($parameters);
+    ksort($expected);
+    if (! $validSignature || $parameters !== $expected) {
+        http_response_code(400);
+        exit;
+    }
+}
+
 if (($state['mode'] ?? '') === 'slow' || (($state['mode'] ?? '') === 'slow_once' && $callNumber === 1)) {
     usleep(1500000);
 }
@@ -32,6 +43,19 @@ if (($state['mode'] ?? 'healthy') === 'redirect' && $path !== '/followed') {
 }
 
 header('Content-Type: application/json');
+if (($state['mode'] ?? '') === 'http_error') {
+    http_response_code($state['status']);
+    echo '{"message":"Transport-only diagnostic with transport-public and transport-private"}';
+    exit;
+}
+if (($state['mode'] ?? '') === 'malformed') {
+    echo $state['body'];
+    exit;
+}
+if (($state['mode'] ?? '') === 'empty') {
+    echo '{"data":{"results":[],"total":0}}';
+    exit;
+}
 $record = str_ends_with($path, '/comics') ? ['id' => 1, 'title' => 'Transport Comic']
     : (str_ends_with($path, '/stories') ? ['id' => 1, 'title' => 'Transport Story'] : ['id' => 1, 'name' => 'Transport Hero']);
 echo json_encode(['data' => ['results' => [$record], 'total' => 1]], JSON_THROW_ON_ERROR);
