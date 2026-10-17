@@ -65,6 +65,7 @@ final class MarvelHttpClient implements MarvelCatalogGateway
         try {
             $response = Http::baseUrl((string) config('marvel.base_url'))
                 ->acceptJson()
+                ->withoutRedirecting()
                 ->beforeSending(function () use ($path): void {
                     $this->budget->reserve();
                     Log::debug('marvel.upstream_call', ['path' => $path]);
