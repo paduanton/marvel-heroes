@@ -58,4 +58,11 @@ if (($state['mode'] ?? '') === 'empty') {
 }
 $record = str_ends_with($path, '/comics') ? ['id' => 1, 'title' => 'Transport Comic']
     : (str_ends_with($path, '/stories') ? ['id' => 1, 'title' => 'Transport Story'] : ['id' => 1, 'name' => 'Transport Hero']);
-echo json_encode(['data' => ['results' => [$record], 'total' => 1]], JSON_THROW_ON_ERROR);
+$body = json_encode(['data' => ['results' => [$record], 'total' => 1]], JSON_THROW_ON_ERROR);
+if (($state['mode'] ?? '') === 'truncated') {
+    $body = $state['body'] ?? $body;
+    http_response_code($state['status'] ?? 200);
+    header('Content-Length: '.(strlen($body) + 64));
+    header('Connection: close');
+}
+echo $body;

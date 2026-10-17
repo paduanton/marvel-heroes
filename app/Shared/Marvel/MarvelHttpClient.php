@@ -6,6 +6,7 @@ use App\Shared\Cache\MarvelRequestBudget;
 use App\Shared\Marvel\Contracts\MarvelCatalogGateway;
 use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use stdClass;
@@ -83,6 +84,9 @@ final class MarvelHttpClient implements MarvelCatalogGateway
             Log::warning('marvel.upstream_connection_failed', ['path' => $path, 'exception' => $exception::class]);
             // Transport exception chains can contain signed request URLs.
             throw new MarvelUnavailableException('Marvel API connection failed.');
+        } catch (RequestException $exception) {
+            Log::warning('marvel.upstream_failed', ['status' => $exception->response->status(), 'path' => $path]);
+            throw new MarvelUnavailableException('Marvel API response transfer failed.');
         }
 
         if ($response->status() === 404) {
