@@ -15,6 +15,7 @@
         "test:a11y": "playwright test accessibility-audit.spec.ts",
         "test:full-stack": "node tests/full-stack/run.mjs",
         "test:deployment": "node tests/full-stack/run.mjs --nginx",
+        "test:upstream": "node tests/full-stack/run.mjs --upstream",
         "lint": "eslint . --max-warnings=0",
         "format": "prettier --write resources/js"
     },

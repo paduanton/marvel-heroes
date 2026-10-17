@@ -3,12 +3,13 @@ import { once } from 'node:events';
 import { resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
-const nginx = process.argv.includes('--nginx');
-const forwardedArguments = process.argv.slice(2).filter(argument => argument !== '--' && argument !== '--nginx');
+const upstream = process.argv.includes('--upstream');
+const nginx = process.argv.includes('--nginx') || upstream;
+const forwardedArguments = process.argv.slice(2).filter(argument => !['--', '--nginx', '--upstream'].includes(argument));
 const outputIsExplicit = forwardedArguments.some(argument => argument === '--output' || argument.startsWith('--output='));
 const projects =
   nginx && !forwardedArguments.some(argument => argument === '--project' || argument.startsWith('--project='))
-    ? ['desktop', 'mobile'].map(project => [`--project=${project}`, ...(outputIsExplicit ? [] : [`--output=test-results/deployment/${project}`])])
+    ? ['desktop', 'mobile'].map(project => [`--project=${project}`, ...(outputIsExplicit ? [] : [`--output=test-results/${upstream ? 'upstream' : 'deployment'}/${project}`])])
     : [[]];
 
 async function runStack(project) {
@@ -18,6 +19,7 @@ async function runStack(project) {
     env: {
       ...process.env,
       FULL_STACK_TRANSPORT: nginx ? 'nginx' : 'php',
+      FULL_STACK_UPSTREAM: upstream ? '1' : '0',
       FULL_STACK_PORT: port,
     },
   });
@@ -63,7 +65,7 @@ async function runStack(project) {
         'node_modules/@playwright/test/cli.js',
         'test',
         '--config',
-        nginx ? 'playwright.deployment.config.ts' : 'playwright.full-stack.config.ts',
+        upstream ? 'playwright.upstream.config.ts' : nginx ? 'playwright.deployment.config.ts' : 'playwright.full-stack.config.ts',
         ...forwardedArguments,
         ...project,
       ],
@@ -78,6 +80,7 @@ async function runStack(project) {
                 MARVEL_TEST_REDIS: stack.redis,
                 MARVEL_TEST_POSTGRES: stack.postgres,
                 MARVEL_TEST_NETWORK: stack.network,
+                ...(upstream ? { MARVEL_TEST_UPSTREAM: stack.upstream, MARVEL_TEST_APPLICATION: stack.application } : {}),
               }
             : {}),
         },

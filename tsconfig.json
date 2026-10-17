@@ -14,5 +14,5 @@
     "baseUrl": ".",
     "paths": { "@/*": ["resources/js/*"] }
   },
-  "include": ["resources/js/**/*.ts", "resources/js/**/*.vue", "vite.config.ts", "playwright*.config.ts", "tests/e2e/**/*.ts", "tests/full-stack/**/*.ts", "tests/deployment/**/*.ts"]
+  "include": ["resources/js/**/*.ts", "resources/js/**/*.vue", "vite.config.ts", "playwright*.config.ts", "tests/e2e/**/*.ts", "tests/full-stack/**/*.ts", "tests/deployment/**/*.ts", "tests/upstream/**/*.ts"]
 }

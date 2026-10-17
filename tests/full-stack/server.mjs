@@ -10,7 +10,9 @@ const postgres = `${run}-postgres`;
 const redis = `${run}-redis`;
 const application = `${run}-app`;
 const web = `${run}-web`;
+const upstream = `${run}-upstream`;
 const nginx = process.env.FULL_STACK_TRANSPORT === 'nginx';
+const syntheticUpstream = process.env.FULL_STACK_UPSTREAM === '1';
 const image = process.env.FULL_STACK_IMAGE ?? (nginx ? 'marvel-heroes-deployment-app' : 'marvel-heroes-testing-identity');
 const webImage = process.env.FULL_STACK_WEB_IMAGE ?? 'marvel-heroes-deployment-web';
 const port = process.env.FULL_STACK_PORT ?? '4174';
@@ -52,6 +54,7 @@ async function ready(container, args) {
 }
 
 try {
+  if (syntheticUpstream && !nginx) throw new Error('The synthetic upstream requires the isolated Nginx stack.');
   if (!nginx) execFileSync(process.execPath, ['node_modules/vite/bin/vite.js', 'build'], { stdio: 'inherit' });
   docker(['network', 'create', '--label', `marvel-heroes.test-run=${run}`, ...(nginx ? ['--internal'] : []), network]);
   networkCreated = true;
@@ -65,6 +68,14 @@ try {
   containers.push(redis);
   await ready(postgres, ['pg_isready', '-U', 'marvel', '-d', 'identity_test']);
   await ready(redis, ['redis-cli', 'ping']);
+  if (syntheticUpstream) {
+    docker(['run', '--detach', '--rm', '--name', upstream, '--network', network, '--network-alias', 'synthetic-upstream',
+      '--label', `marvel-heroes.test-run=${run}`, '--env', 'MARVEL_SYNTHETIC_UPSTREAM=1', '--env', 'APP_ENV=integration',
+      '--mount', `type=bind,source=${resolve('tests/Support/deployment-upstream.php')},target=/tmp/deployment-upstream.php,readonly`,
+      '--entrypoint', 'php', image, '-S', '0.0.0.0:8081', '/tmp/deployment-upstream.php']);
+    containers.push(upstream);
+    await ready(upstream, ['php', '-r', '$socket = @fsockopen("127.0.0.1", 8081); exit($socket ? 0 : 1);']);
+  }
   // Keep PostgreSQL outage checks independent of Docker DNS removing a stopped container's name.
   const databaseHost = nginx
     ? JSON.parse(docker(['inspect', '--format', '{{json .NetworkSettings.Networks}}', postgres]))[network].IPAddress
@@ -75,6 +86,10 @@ try {
     `APP_URL=http://127.0.0.1:${port}`, `SANCTUM_STATEFUL_DOMAINS=127.0.0.1:${port}`,
     'DB_CONNECTION=pgsql', `DB_HOST=${databaseHost}`, 'DB_PORT=5432', 'DB_DATABASE=identity_test', 'DB_USERNAME=marvel', 'DB_PASSWORD',
     'CACHE_STORE=redis', 'REDIS_HOST=redis', 'SESSION_DRIVER=redis', 'SESSION_SECURE_COOKIE=false',
+    ...(syntheticUpstream ? [
+      'MARVEL_SYNTHETIC_UPSTREAM=1', 'MARVEL_BASE_URL=http://synthetic-upstream:8081/v1/public',
+      'MARVEL_PUBLIC_KEY=synthetic-public', 'MARVEL_PRIVATE_KEY=synthetic-private', 'MARVEL_DAILY_BUDGET=20',
+    ] : []),
   ].flatMap(value => ['--env', value]);
   const mounts = (nginx ? [] : ['app', 'routes', 'config', 'database', 'resources/views', 'public/build', 'tests/Support', 'bootstrap/app.php'])
     .flatMap(path => ['--mount', `type=bind,source=${resolve(path)},target=/var/www/html/${path},readonly`]);
@@ -82,8 +97,8 @@ try {
   // This network and database were created above; no host database or volumes are mounted.
   docker(['run', '--rm', ...common, 'artisan', 'migrate', '--force'], { stdio: 'inherit' });
   if (nginx) {
-    docker(['run', '--rm', '--mount', `type=bind,source=${resolve('tests/Support/deployment-seed.php')},target=/tmp/deployment-seed.php,readonly`, ...common, '/tmp/deployment-seed.php'], { stdio: 'inherit' });
-    docker(['run', '--detach', '--rm', '--name', application, '--network', network, '--network-alias', 'app', ...settings, image]);
+    if (!syntheticUpstream) docker(['run', '--rm', '--mount', `type=bind,source=${resolve('tests/Support/deployment-seed.php')},target=/tmp/deployment-seed.php,readonly`, ...common, '/tmp/deployment-seed.php'], { stdio: 'inherit' });
+    docker(['run', '--detach', '--rm', '--name', application, '--network', network, '--network-alias', 'app', '--label', `marvel-heroes.test-run=${run}`, ...settings, image]);
     containers.push(application);
     docker(['create', '--rm', '--name', web, '--network', network, '--publish', `127.0.0.1:${port}:80`, webImage]);
     containers.push(web);
@@ -93,7 +108,7 @@ try {
     docker(['run', '--detach', '--rm', '--name', application, '--publish', `127.0.0.1:${port}:8000`, ...common, '-S', '0.0.0.0:8000', '-t', 'public', 'tests/Support/browser-router.php']);
     containers.push(application);
   }
-  process.send?.({ type: 'ready', run, redis, postgres, network });
+  process.send?.({ type: 'ready', run, redis, postgres, network, ...(syntheticUpstream ? { upstream, application } : {}) });
   const logs = spawn('docker', ['logs', '--follow', application], { stdio: 'ignore' });
   logs.on('exit', code => { if (!stopped) { cleanup(); process.exit(code || 1); } });
   await new Promise(() => {});

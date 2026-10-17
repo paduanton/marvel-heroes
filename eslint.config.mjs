@@ -15,7 +15,7 @@ export default [
         },
     },
     {
-        files: ['resources/js/**/*.ts', 'tests/e2e/**/*.ts', 'tests/full-stack/**/*.ts', 'tests/deployment/**/*.ts', 'playwright*.config.ts'],
+        files: ['resources/js/**/*.ts', 'tests/e2e/**/*.ts', 'tests/full-stack/**/*.ts', 'tests/deployment/**/*.ts', 'tests/upstream/**/*.ts', 'playwright*.config.ts'],
         languageOptions: {
             parser: tsParser,
             parserOptions: {
