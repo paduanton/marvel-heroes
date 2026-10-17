@@ -44,6 +44,18 @@ docker compose config --no-env-resolution --quiet
 
 The test key is generated only in the process, never printed, and discarded after execution. Tests use fake upstream responses and an in-memory cache; they do not consume Marvel quota or verify Redis concurrency. Rebuild the image after PHP changes.
 
+### Local HTTP transport validation
+
+The opt-in `tests/Transport` suite uses the real Laravel/Guzzle cURL transport against a disposable PHP server on an ephemeral loopback port. After rebuilding the `testing` image, run it in a container without external networking:
+
+```powershell
+docker run --rm --network none --env TEST_MARVEL_TRANSPORT=1 marvel-heroes-testing php -r 'putenv("APP_KEY=base64:".base64_encode(random_bytes(32))); require "vendor/phpunit/phpunit/phpunit";' -- tests/Transport
+```
+
+The suite requires cURL and explicitly checks that the cache is in memory before flushing it. It uses synthetic credentials, no `.env` mount, no published ports and no real Marvel calls. Its server process and temporary files are removed after each test. Without `TEST_MARVEL_TRANSPORT=1`, these tests skip and remain outside the default suites.
+
+These checks cover real redirects, read timeouts, retries and safe failure recovery through the catalog API. A generous elapsed-time watchdog detects gross local regressions; it is not an end-to-end latency guarantee. This suite does not establish production DNS/TLS behavior, Marvel availability or quota, Redis contention or refreshes outliving their lease. Run Redis and Nginx/FPM validation separately as described below.
+
 ### Redis concurrency validation
 
 The separate `tests/Integration` suite runs catalog HTTP requests in independent PHP processes against real Redis. It is intentionally outside the default PHPUnit suites. Run it explicitly after building the `testing` image:

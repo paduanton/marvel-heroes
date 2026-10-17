@@ -40,6 +40,8 @@ Laravel defines the retry count as total attempts, not additional retries, and d
 
 `MarvelHttpClient` rejects an effective timeout below one second before dispatch or budget reservation. Fresh cache remains available, and refresh failures can use valid stale entries. Without either, the API returns the existing safe `502 / upstream-unavailable` problem. This is a dispatch-time check, not startup validation; it does not change `/ready`. A zero timeout would otherwise allow an indefinite wait in [Guzzle](https://docs.guzzlephp.org/en/stable/request-options.html#timeout).
 
+The Marvel client disables [automatic redirects](https://docs.guzzlephp.org/en/stable/request-options.html#allow-redirects) so a redirect chain cannot extend an HTTP attempt beyond the window assumed by the lease. A `3xx` response uses the existing unsuccessful-response handling without a status-based retry: valid stale data remains available; otherwise the API returns the safe `502 / upstream-unavailable` problem. The attempted request still consumes budget, and the redirect target is neither requested nor cached. This policy applies only to the Marvel integration, not application navigation or other HTTP clients.
+
 ## Upstream collection validation
 
 Before normalizing a successful upstream response, the client requires a JSON object containing a `data` object, a `results` JSON array of objects, and a nonnegative integer `total`. It preserves JSON object/array distinctions during validation: `{}` is not accepted as an empty results array. Unknown properties are ignored. This is the adapter's minimum structural contract, not the application's public response format.
@@ -127,7 +129,7 @@ Catalog discovery remains public. The `Identity` module uses Sanctum first-party
 ## Implementation limits
 
 - The refresh owner waits synchronously for Marvel; this is not background revalidation. Concurrent callers wait briefly for a lock before using stale data when available.
-- The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses, slow Redis operations or HTTP redirect chains can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch; broader configuration validation and upper bounds remain unimplemented.
+- The calculated lease assumes bounded HTTP timeouts and bounded Redis/local processing. There is no lease renewal or atomic rejection of writes from an expired owner: long process pauses or slow Redis operations can still outlive it. Nonpositive HTTP timeouts are rejected before dispatch and automatic Marvel redirects are disabled; broader configuration validation and upper bounds remain unimplemented.
 - Search normalization happens in the v1 application action; the legacy path does not share that normalization. Equivalent legacy and v1 queries can use separate keys.
 - Public HTTP caching applies only to successful named catalog GET routes, never to identity or CSRF responses.
 - Browser E2E tests exercise compiled pages with simulated API responses, including discovery, history, retries, pagination, keyboard focus, images and responsive content. They do not establish behavior against the real upstream or cover every possible route-driven update.
