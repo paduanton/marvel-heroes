@@ -60,7 +60,7 @@ abstract class MarvelTransportTestCase extends TestCase
         try {
             $this->server?->stop(0.2);
             if ($this->directory !== null) {
-                foreach (['state.json', 'calls.jsonl'] as $file) {
+                foreach (['state.json', 'calls.jsonl', 'completed.jsonl'] as $file) {
                     if (is_file($this->directory.'/'.$file)) {
                         unlink($this->directory.'/'.$file);
                     }
@@ -87,6 +87,20 @@ abstract class MarvelTransportTestCase extends TestCase
             static fn (string $line): array => json_decode($line, true, flags: JSON_THROW_ON_ERROR),
             file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES),
         ) : [];
+    }
+
+    protected function awaitCompletedCalls(int $count): void
+    {
+        $path = $this->directory.'/completed.jsonl';
+        $deadline = microtime(true) + 5;
+        do {
+            $completed = is_file($path) ? count(file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)) : 0;
+            if ($completed >= $count) {
+                break;
+            }
+            usleep(10000);
+        } while ($this->server->isRunning() && microtime(true) < $deadline);
+        self::assertSame($count, $completed, 'The source must finish pending responses before recovery is tested.');
     }
 
     public static function catalogResources(): array

@@ -17,6 +17,15 @@ file_put_contents($directory.'/calls.jsonl', json_encode([
     'path' => $path, 'method' => $_SERVER['REQUEST_METHOD'],
     'signature_valid' => $validSignature, 'private_key_absent' => ! isset($_GET['private_key']),
 ], JSON_THROW_ON_ERROR).PHP_EOL, FILE_APPEND | LOCK_EX);
+$callNumber = count(file($directory.'/calls.jsonl', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+register_shutdown_function(static function () use ($directory): void {
+    file_put_contents($directory.'/completed.jsonl', "done\n", FILE_APPEND | LOCK_EX);
+});
+
+if (($state['mode'] ?? '') === 'slow' || (($state['mode'] ?? '') === 'slow_once' && $callNumber === 1)) {
+    usleep(1500000);
+}
+
 if (($state['mode'] ?? 'healthy') === 'redirect' && $path !== '/followed') {
     header('Location: /followed', true, $state['status'] ?? 302);
     exit;
