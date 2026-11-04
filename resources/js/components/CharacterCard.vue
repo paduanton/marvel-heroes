@@ -11,17 +11,26 @@ const route = useRoute();
 
 <template>
   <article class="character-card">
-    <RouterLink :to="{ name: 'character-detail', params: { id: character.id }, query: catalogReturnQuery(route.query) }" class="character-card__image" :aria-label="`View ${character.name}`">
-      <CatalogImage :src="character.image_url" :alt="character.name" :fallback="initials(character.name)" />
+    <RouterLink
+      :to="{ name: 'character-detail', params: { id: character.id }, query: catalogReturnQuery(route.query) }"
+      class="character-card__link"
+      :aria-label="character.name"
+    >
+      <div class="character-card__image">
+        <CatalogImage :src="character.image_url" :alt="character.name" :fallback="initials(character.name)" />
+      </div>
+      <div class="character-card__body">
+        <h2>{{ character.name }}</h2>
+        <p>{{ excerpt(character.description) }}</p>
+      </div>
     </RouterLink>
-    <div class="character-card__body">
-      <h2><RouterLink :to="{ name: 'character-detail', params: { id: character.id }, query: catalogReturnQuery(route.query) }">{{ character.name }}</RouterLink></h2>
-      <p>{{ excerpt(character.description) }}</p>
-    </div>
   </article>
 </template>
 
 <style scoped>
+.character-card__link { display: block; height: 100%; }
+.character-card__link:focus-visible { outline: 3px solid #e62429; outline-offset: 3px; }
+
 @media (prefers-reduced-motion: reduce) {
   .character-card :deep(img) {
     transition: none;

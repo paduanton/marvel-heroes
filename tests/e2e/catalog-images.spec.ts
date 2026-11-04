@@ -34,12 +34,13 @@ test('keeps character cards usable when their image returns 404', async ({ page 
   await page.route(brokenImage, route => route.fulfill({ status: 404, body: '' }));
 
   await page.goto('/');
-  const thumbnail = page.getByRole('link', { name: 'View Spider-Man', exact: true });
-  await expect(thumbnail.getByText('S', { exact: true })).toBeVisible();
-  await expect(thumbnail.getByRole('img')).toHaveCount(0);
+  const card = page.getByRole('link', { name: 'Spider-Man', exact: true });
+  const fallback = card.getByText('S', { exact: true });
+  await expect(fallback).toBeVisible();
+  await expect(card.getByRole('img')).toHaveCount(0);
   expect(requests).toHaveLength(1);
 
-  await thumbnail.click();
+  await fallback.click();
   await expect(page.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
 });
 
@@ -124,14 +125,14 @@ test('loads a new image URL after a failed image on the same character card', as
   await page.route(brokenImage, route => route.fulfill({ status: 404, body: '' }));
   await mockPortrait(page);
   await page.goto('/');
-  const thumbnail = page.getByRole('link', { name: 'View Spider-Man', exact: true });
-  await expect(thumbnail.getByText('S', { exact: true })).toBeVisible();
+  const card = page.getByRole('link', { name: 'Spider-Man', exact: true });
+  await expect(card.getByText('S', { exact: true })).toBeVisible();
 
   characterImages.set(1, validImage);
   await page.getByRole('searchbox', { name: 'Search characters' }).fill('sp');
-  const image = thumbnail.getByRole('img', { name: 'Spider-Man', exact: true });
+  const image = card.getByRole('img', { name: 'Spider-Man', exact: true });
   await expect(image).toHaveAttribute('src', validImage);
   await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(64);
-  await expect(thumbnail.getByText('S', { exact: true })).toHaveCount(0);
+  await expect(card.getByText('S', { exact: true })).toHaveCount(0);
   expect(requests).toHaveLength(2);
 });

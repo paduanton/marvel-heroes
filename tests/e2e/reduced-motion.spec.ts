@@ -12,15 +12,19 @@ test('respects reduced motion without disabling character navigation', async ({ 
   }));
 
   await page.goto('/');
-  const thumbnail = page.getByRole('link', { name: 'View Spider-Man', exact: true });
-  const image = thumbnail.getByRole('img');
+  const card = page.getByRole('link', { name: 'Spider-Man', exact: true });
+  const image = card.getByRole('img');
   await expect(image).toBeVisible();
   await expect.poll(() => image.evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-  const originalBounds = await thumbnail.boundingBox();
-  await thumbnail.hover();
+  const documentBounds = () => card.evaluate(element => {
+    const { x, y, width, height } = element.getBoundingClientRect();
+    return { x: x + window.scrollX, y: y + window.scrollY, width, height };
+  });
+  const originalBounds = await documentBounds();
+  await card.hover();
   await expect(image).toHaveCSS('transform', 'none');
   await expect(image).toHaveCSS('transition-duration', '0s');
-  expect(await thumbnail.boundingBox()).toEqual(originalBounds);
+  expect(await documentBounds()).toEqual(originalBounds);
   expect(requests).toHaveLength(1);
   await page.screenshot({ path: testInfo.outputPath('reduced-motion-catalog.png'), fullPage: true });
 
@@ -30,10 +34,10 @@ test('respects reduced motion without disabling character navigation', async ({ 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(image).toHaveCSS('transform', 'none');
   await expect(image).toHaveCSS('transition-duration', '0s');
-  expect(await thumbnail.boundingBox()).toEqual(originalBounds);
+  expect(await documentBounds()).toEqual(originalBounds);
   expect(requests).toHaveLength(1);
 
-  await thumbnail.click();
+  await image.click();
   await expect(page.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
   expect(requests).toHaveLength(3);
 });
