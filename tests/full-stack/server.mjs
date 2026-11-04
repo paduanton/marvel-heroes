@@ -98,7 +98,10 @@ try {
   docker(['run', '--rm', ...common, 'artisan', 'migrate', '--force'], { stdio: 'inherit' });
   if (nginx) {
     if (!syntheticUpstream) docker(['run', '--rm', '--mount', `type=bind,source=${resolve('tests/Support/deployment-seed.php')},target=/tmp/deployment-seed.php,readonly`, ...common, '/tmp/deployment-seed.php'], { stdio: 'inherit' });
-    docker(['run', '--detach', '--rm', '--name', application, '--network', network, '--network-alias', 'app', '--label', `marvel-heroes.test-run=${run}`, ...settings, image]);
+    const cacheFixture = syntheticUpstream
+      ? ['--mount', `type=bind,source=${resolve('tests/Support/deployment-cache-state.php')},target=/tmp/deployment-cache-state.php,readonly`]
+      : [];
+    docker(['run', '--detach', '--rm', '--name', application, '--network', network, '--network-alias', 'app', '--label', `marvel-heroes.test-run=${run}`, ...settings, ...cacheFixture, image]);
     containers.push(application);
     docker(['create', '--rm', '--name', web, '--network', network, '--publish', `127.0.0.1:${port}:80`, webImage]);
     containers.push(web);

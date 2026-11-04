@@ -1,5 +1,6 @@
 import { fork, spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setTimeout } from 'node:timers/promises';
 
@@ -11,6 +12,15 @@ const projects =
   nginx && !forwardedArguments.some(argument => argument === '--project' || argument.startsWith('--project='))
     ? ['desktop', 'mobile'].map(project => [`--project=${project}`, ...(outputIsExplicit ? [] : [`--output=test-results/${upstream ? 'upstream' : 'deployment'}/${project}`])])
     : [[]];
+const selective = forwardedArguments.some(argument => argument.endsWith('.spec.ts')
+  || ['--grep', '--grep-invert', '-g'].includes(argument) || argument.startsWith('--grep=') || argument.startsWith('--grep-invert='));
+const targets = upstream && !selective
+  ? projects.flatMap(project => readdirSync(resolve('tests/upstream')).filter(file => file.endsWith('.spec.ts')).sort().map(file => [
+    ...project.filter(argument => !argument.startsWith('--output=')), file,
+    ...(outputIsExplicit ? [] : [`--output=test-results/upstream/${project.find(argument => argument.startsWith('--project='))?.slice(10) ?? 'selected'}/${file.replace('.spec.ts', '')}`]),
+  ]))
+  : projects;
+if (targets.length === 0) throw new Error('No synthetic upstream test files were found.');
 
 async function runStack(project) {
   const port = process.env.FULL_STACK_PORT ?? (nginx ? '4175' : '4174');
@@ -103,7 +113,7 @@ async function runStack(project) {
 }
 
 let result = 0;
-for (const project of projects) {
+for (const project of targets) {
   const code = await runStack(project);
   if (code !== 0) result = code;
   if (code === 130) break;
