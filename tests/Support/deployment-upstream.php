@@ -7,18 +7,24 @@ if (getenv('MARVEL_SYNTHETIC_UPSTREAM') !== '1' || getenv('APP_ENV') !== 'integr
 
 $stateFile = '/tmp/marvel-upstream-state.json';
 $callsFile = '/tmp/marvel-upstream-calls.jsonl';
+$releaseFile = '/tmp/marvel-upstream-release';
 if (PHP_SAPI === 'cli') {
     if (($argv[1] ?? '') === 'configure') {
         $state = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
         if (! is_array($state) || ! is_int($state['id'] ?? null) || $state['id'] < 1
             || ! is_string($state['query'] ?? null)
-            || ! in_array($state['mode'] ?? null, ['healthy', 'redirect', 'failure', 'truncated', 'malformed'], true)) {
+            || ! in_array($state['mode'] ?? null, ['healthy', 'redirect', 'failure', 'truncated', 'malformed', 'held'], true)) {
             exit(1);
         }
         if ($state['reset_calls'] ?? false) {
             file_put_contents($callsFile, '');
         }
+        if ($state['mode'] === 'held' && is_file($releaseFile)) {
+            unlink($releaseFile);
+        }
         file_put_contents($stateFile, json_encode($state, JSON_THROW_ON_ERROR), LOCK_EX);
+    } elseif (($argv[1] ?? '') === 'release') {
+        file_put_contents($releaseFile, '1', LOCK_EX);
     } elseif (($argv[1] ?? '') === 'calls') {
         $lines = is_file($callsFile) ? file($callsFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) : [];
         echo json_encode(array_map(static fn (string $line): array => json_decode($line, true, flags: JSON_THROW_ON_ERROR), $lines), JSON_THROW_ON_ERROR);
@@ -45,6 +51,18 @@ if (! $signed || $_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(401);
     exit;
 }
+if ($state['mode'] === 'held') {
+    // The call log signals arrival; the CLI releases this response after the contender finishes.
+    $deadline = hrtime(true) + 8_000_000_000;
+    while (! is_file($releaseFile)) {
+        if (hrtime(true) >= $deadline) {
+            http_response_code(503);
+            exit;
+        }
+        usleep(20_000);
+        clearstatcache(true, $releaseFile);
+    }
+}
 if ($state['mode'] === 'redirect') {
     header('Location: /redirect-target', true, 302);
     exit;
@@ -66,7 +84,7 @@ if ($state['mode'] === 'malformed') {
 }
 $characters = array_map(static fn (int $index): array => [
     'id' => $state['id'] + $index, 'name' => $state['query'].' Hero '.($index + 1),
-    'description' => 'Synthetic character served over real HTTP.',
+    'description' => $state['mode'] === 'held' ? 'Synthetic character refreshed over real HTTP.' : 'Synthetic character served over real HTTP.',
 ], range(0, 20));
 if ($path === '/v1/public/characters') {
     $prefix = strtolower($_GET['nameStartsWith'] ?? '');

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomInt, randomUUID } from 'node:crypto';
 
-type Mode = 'healthy' | 'redirect' | 'failure' | 'truncated' | 'malformed';
+type Mode = 'healthy' | 'redirect' | 'failure' | 'truncated' | 'malformed' | 'held';
 type Call = { path: string; method: string; signature_valid: boolean };
 export type CacheEntry = { resource: 'characters' | 'character' | 'stories' | 'comics'; parameters: Record<string, string | number> };
 
@@ -40,6 +40,7 @@ export function syntheticSource() {
   return {
     id: state.id, query: state.query, name: `${state.query} Hero 1`,
     mode: configure,
+    release: () => execFileSync('docker', ['exec', source, 'php', '/tmp/deployment-upstream.php', 'release'], { stdio: ['ignore', 'ignore', 'pipe'] }),
     age: (entries: CacheEntry[]) => cache('age', entries),
     resetBudget: () => cache('reset-budget'),
     exhaustBudget: () => cache('exhaust-budget'),
