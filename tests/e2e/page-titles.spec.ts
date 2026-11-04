@@ -35,7 +35,7 @@ test('updates page titles through discovery and browser history without more API
   await expect(page).toHaveTitle('Characters | Marvel Heroes');
   await page.getByRole('link', { name: 'Spider-Man', exact: true }).click();
   await expect(page).toHaveTitle('Character details | Marvel Heroes');
-  await page.getByRole('link', { name: 'View comics', exact: true }).click();
+  await page.getByRole('link', { name: 'View comics for Origin of a hero', exact: true }).click();
   await expect(page).toHaveTitle('Related comics | Marvel Heroes');
   await expect(page.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
   expect(requests.map(url => url.pathname).sort()).toEqual([

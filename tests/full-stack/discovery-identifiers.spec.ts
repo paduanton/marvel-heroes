@@ -9,7 +9,7 @@ test('the largest safe source identifier survives JSON and discovery links witho
   await expect(character).toHaveAttribute('href', '/characters/9007199254740991');
   await character.click();
   await expect(page.getByRole('region', { name: 'Character details', exact: true }).getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
-  const comics = page.getByRole('region', { name: 'Related stories', exact: true }).getByRole('link', { name: 'View comics', exact: true });
+  const comics = page.getByRole('region', { name: 'Related stories', exact: true }).getByRole('link', { name: 'View comics for Spider-Man', exact: true });
   await expect(comics).toHaveAttribute('href', '/stories/9007199254740991/comics?character=9007199254740991');
   await comics.click();
   await expect(page.getByRole('region', { name: 'Comic results', exact: true }).getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();

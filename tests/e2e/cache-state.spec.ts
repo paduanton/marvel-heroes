@@ -30,7 +30,7 @@ for (const state of [
     cacheStates.set('/api/v1/characters/1/stories', state.stories);
     await page.goto('/characters/1');
     await expect(page.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'View comics', exact: true })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'View comics for Origin of a hero', exact: true })).toBeVisible();
     await expect(page.getByText(notice, { exact: true })).toHaveCount(state.total);
     await expect(page.getByRole('region', { name: 'Related stories', exact: true }).getByText(notice, { exact: true })).toHaveCount(state.related);
     expect(requests).toHaveLength(2);

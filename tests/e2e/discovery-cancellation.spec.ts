@@ -94,7 +94,7 @@ for (const collection of collections) {
       await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('link', { name: 'Characters', exact: true }).click();
       await page.getByRole('link', { name: 'Iron Man', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Iron Man', exact: true })).toBeVisible();
-      if (collection.name === 'comics') await page.getByRole('link', { name: 'View comics', exact: true }).click();
+      if (collection.name === 'comics') await page.getByRole('link', { name: 'View comics for Origin of a hero', exact: true }).click();
       await expect(results.getByRole('heading', { name: collection.firstTitle, exact: true })).toBeVisible();
       await expect.poll(() => cancelled).toBe(true);
     } finally {

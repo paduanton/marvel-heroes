@@ -15,7 +15,7 @@ test('navigates paginated discovery through real HTTP and reuses cached return r
   await expect(stories.getByRole('heading', { name: 'Synthetic Story 11', exact: true })).toBeVisible();
   await page.reload();
   await expect(stories.getByRole('heading', { name: 'Synthetic Story 11', exact: true })).toBeVisible();
-  await stories.getByRole('link', { name: 'View comics', exact: true }).click();
+  await stories.getByRole('link', { name: 'View comics for Synthetic Story 11', exact: true }).click();
   const comics = page.getByRole('region', { name: 'Comic results', exact: true });
   await expect(comics.getByRole('heading', { name: 'Synthetic Comic #1', exact: true })).toBeVisible();
   await comics.getByRole('button', { name: 'Next', exact: true }).click();

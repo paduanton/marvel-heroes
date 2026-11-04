@@ -18,7 +18,7 @@ test('preserves all discovery pages through built Nginx assets and FPM responses
   expect(new URL(page.url()).searchParams.get('stories_page')).toBe('2');
   await page.reload();
   await expect(stories.getByRole('heading', { name: 'A new beginning', exact: true })).toBeVisible();
-  await stories.getByRole('link', { name: 'View comics', exact: true }).click();
+  await stories.getByRole('link', { name: 'View comics for A new beginning', exact: true }).click();
   const comics = page.getByRole('region', { name: 'Comic results', exact: true });
   await expect(comics.getByRole('article')).toHaveCount(20);
   await comics.getByRole('button', { name: 'Next', exact: true }).click();

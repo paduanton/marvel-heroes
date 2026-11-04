@@ -70,7 +70,7 @@ for (const scenario of scenarios) {
     const character = scenario.name === 'stories' ? 'Iron Man' : 'Spider-Man';
     await page.getByRole('link', { name: character, exact: true }).click();
     if (scenario.name === 'comics') {
-      await page.getByRole('link', { name: 'View comics', exact: true }).click();
+      await page.getByRole('link', { name: 'View comics for Origin of a hero', exact: true }).click();
     }
     await expect(results.getByRole('heading', { name: scenario.result, exact: true })).toBeVisible();
     await expect(results.getByText(scenario.empty, { exact: true })).toHaveCount(0);

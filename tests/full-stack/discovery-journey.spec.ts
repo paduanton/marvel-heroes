@@ -29,7 +29,7 @@ test('discovers, searches and paginates all resources through Laravel and Redis'
   await expect(stories.getByRole('heading', { name: 'A new beginning', exact: true })).toBeVisible();
   await stories.getByRole('button', { name: 'First page', exact: true }).click();
   await expect(stories.getByRole('heading', { name: 'Origin of a hero', exact: true })).toBeVisible();
-  await stories.getByRole('link', { name: 'View comics', exact: true }).first().click();
+  await stories.getByRole('link', { name: 'View comics for Origin of a hero', exact: true }).click();
   const comics = page.getByRole('region', { name: 'Comic results', exact: true });
   await expect(comics.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
   await expect(comics.getByRole('article')).toHaveCount(20);

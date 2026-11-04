@@ -44,7 +44,7 @@ test('cached stories remain navigable while a character fails and later recovers
   await page.keyboard.press('Enter');
   await expect(character.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
   await expect(character).toBeFocused();
-  await stories.getByRole('link', { name: 'View comics', exact: true }).first().click();
+  await stories.getByRole('link', { name: 'View comics for Origin of a hero', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Amazing Spider-Man #1', exact: true })).toBeVisible();
   const cached = await context.request.get('/api/v1/characters/1/stories?page=1&per_page=10');
   expect(cached.headers()['x-test-upstream-calls']).toBe('4');

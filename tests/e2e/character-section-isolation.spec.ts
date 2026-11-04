@@ -21,7 +21,7 @@ test('keeps stories navigable while character details fail and recover', async (
   await expect(stories.getByText('Page 2', { exact: true })).toBeVisible();
   expect(requests.filter(url => url.pathname === '/api/v1/characters/1')).toHaveLength(2);
   expect(requests.filter(url => url.pathname === '/api/v1/characters/1/stories')).toHaveLength(2);
-  await stories.getByRole('link', { name: 'View comics' }).click();
+  await stories.getByRole('link', { name: 'View comics for Next adventure', exact: true }).click();
   await expect(page).toHaveURL(/\/stories\/102\/comics/);
 });
 

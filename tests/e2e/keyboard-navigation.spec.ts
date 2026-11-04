@@ -28,7 +28,7 @@ test('restarts keyboard navigation after page changes and browser history naviga
   await page.goto('/');
   const destinations = [
     { link: 'Spider-Man', url: /\/characters\/1$/, heading: 'Spider-Man' },
-    { link: 'View comics', url: /\/stories\/101\/comics\?character=1$/, heading: 'Related comics' },
+    { link: 'View comics for Origin of a hero', url: /\/stories\/101\/comics\?character=1$/, heading: 'Related comics' },
     { link: 'Characters', url: /\/$/, heading: 'Discover Marvel characters' },
   ];
   const skipLink = page.getByRole('link', { name: 'Skip to main content', exact: true });
@@ -81,4 +81,31 @@ test('keeps search focused when filters and their browser history change', async
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: 'Iron Man', exact: true })).toBeVisible();
   await expect(search).toBeFocused();
+});
+
+test('identifies each comics destination by its story for keyboard navigation', async ({ page }) => {
+  await mockCatalog(page);
+  await page.route(url => url.pathname === '/api/v1/characters/1/stories', route => route.fulfill({
+    json: {
+      data: [
+        { id: 101, title: 'Origin of a hero', counts: { comics: 2 } },
+        { id: 102, title: 'Next adventure', counts: { comics: 3 } },
+      ],
+      meta: { page: 1, per_page: 10, total: 2 },
+    },
+  }));
+  await page.goto('/characters/1?query=sp&page=2');
+  const stories = page.getByRole('region', { name: 'Related stories', exact: true });
+  const origin = stories.getByRole('link', { name: 'View comics for Origin of a hero', exact: true });
+  const adventure = stories.getByRole('link', { name: 'View comics for Next adventure', exact: true });
+  await expect(origin).toHaveText('View comics');
+  await expect(adventure).toHaveText('View comics');
+  await expect(origin).toHaveAttribute('href', '/stories/101/comics?query=sp&page=2&character=1');
+  await origin.focus();
+  await page.keyboard.press('Tab');
+  await expect(adventure).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/stories\/102\/comics\?query=sp&page=2&character=1$/);
+  await page.getByRole('link', { name: 'Back to character', exact: true }).click();
+  await expect(adventure).toBeVisible();
 });

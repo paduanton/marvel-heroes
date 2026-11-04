@@ -43,7 +43,12 @@ const { character, characterStale, stories, loading, error, retryCharacter, stor
       <div class="story-list">
         <article v-for="story in stories" :key="story.id" class="story-item">
           <div><p class="story-type">{{ story.type ?? 'Story' }}</p><h3>{{ story.title }}</h3><p>{{ story.counts.comics }} related comics</p></div>
-          <RouterLink :to="{ name: 'story-comics', params: { id: story.id }, query: { ...route.query, character: props.id } }">View comics</RouterLink>
+          <RouterLink
+            :to="{ name: 'story-comics', params: { id: story.id }, query: { ...route.query, character: props.id } }"
+            :aria-label="`View comics for ${story.title}`"
+          >
+            View comics
+          </RouterLink>
         </article>
       </div>
     </AsyncPanel>
