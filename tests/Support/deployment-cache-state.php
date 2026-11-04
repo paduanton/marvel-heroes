@@ -17,8 +17,13 @@ if (config('cache.default') !== 'redis') {
 $input = json_decode(stream_get_contents(STDIN), true, flags: JSON_THROW_ON_ERROR);
 if (($input['action'] ?? '') === 'reset-budget') {
     Cache::forget('marvel:budget:timestamps');
-} elseif (($input['action'] ?? '') === 'exhaust-budget') {
-    Cache::put('marvel:budget:timestamps', array_fill(0, (int) config('marvel.daily_budget'), now()->getTimestamp()), now()->addDay());
+} elseif (($input['action'] ?? '') === 'set-budget-remaining') {
+    $budget = (int) config('marvel.daily_budget');
+    $remaining = $input['remaining'] ?? null;
+    if (! is_int($remaining) || $remaining < 0 || $remaining > $budget) {
+        exit(1);
+    }
+    Cache::put('marvel:budget:timestamps', array_fill(0, $budget - $remaining, now()->getTimestamp()), now()->addDay());
 } elseif (($input['action'] ?? '') === 'age') {
     $allowed = [
         'characters' => ['limit', 'offset', 'query'], 'character' => ['characterId'],

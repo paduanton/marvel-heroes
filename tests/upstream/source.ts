@@ -4,6 +4,9 @@ import { randomInt, randomUUID } from 'node:crypto';
 type Mode = 'healthy' | 'redirect' | 'failure' | 'truncated' | 'malformed' | 'held';
 type Call = { path: string; method: string; signature_valid: boolean };
 export type CacheEntry = { resource: 'characters' | 'character' | 'stories' | 'comics'; parameters: Record<string, string | number> };
+type CacheAction = { action: 'reset-budget' }
+  | { action: 'set-budget-remaining'; remaining: number }
+  | { action: 'age'; entries: CacheEntry[] };
 
 export function syntheticSource() {
   const run = process.env.MARVEL_TEST_RUN;
@@ -24,9 +27,9 @@ export function syntheticSource() {
   const net = JSON.parse(execFileSync('docker', ['network', 'inspect', network], { encoding: 'utf8' }))[0];
   if (!net.Internal || net.Labels?.['marvel-heroes.test-run'] !== run) throw new Error('The upstream network must be isolated.');
   const state = { id: randomInt(100_000, 10_000_000), query: `http-${randomUUID()}`, mode: 'healthy' as Mode };
-  function cache(action: 'reset-budget' | 'exhaust-budget' | 'age', entries: CacheEntry[] = []) {
+  function cache(input: CacheAction) {
     execFileSync('docker', ['exec', '--interactive', application!, 'php', '/tmp/deployment-cache-state.php'], {
-      input: JSON.stringify({ action, entries }), stdio: ['pipe', 'ignore', 'pipe'],
+      input: JSON.stringify(input), stdio: ['pipe', 'ignore', 'pipe'],
     });
   }
   function configure(mode: Mode, reset = false) {
@@ -36,14 +39,15 @@ export function syntheticSource() {
     });
   }
   configure('healthy', true);
-  cache('reset-budget');
+  cache({ action: 'reset-budget' });
   return {
     id: state.id, query: state.query, name: `${state.query} Hero 1`,
     mode: configure,
     release: () => execFileSync('docker', ['exec', source, 'php', '/tmp/deployment-upstream.php', 'release'], { stdio: ['ignore', 'ignore', 'pipe'] }),
-    age: (entries: CacheEntry[]) => cache('age', entries),
-    resetBudget: () => cache('reset-budget'),
-    exhaustBudget: () => cache('exhaust-budget'),
+    age: (entries: CacheEntry[]) => cache({ action: 'age', entries }),
+    resetBudget: () => cache({ action: 'reset-budget' }),
+    setBudgetRemaining: (remaining: number) => cache({ action: 'set-budget-remaining', remaining }),
+    exhaustBudget: () => cache({ action: 'set-budget-remaining', remaining: 0 }),
     calls: () => JSON.parse(execFileSync('docker', ['exec', source, 'php', '/tmp/deployment-upstream.php', 'calls'], { encoding: 'utf8' })) as Call[],
   };
 }
