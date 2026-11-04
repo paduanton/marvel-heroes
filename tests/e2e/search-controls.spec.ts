@@ -47,6 +47,32 @@ test('waits for completed text composition before applying a search', async ({ p
   expect(requests[1].searchParams.get('query')).toBe('iron');
 });
 
+test('leaves Escape to the input method during text composition', async ({ page }) => {
+  const { requests } = await mockCatalog(page);
+  await page.goto('/?query=sp');
+  await expect(page.getByRole('heading', { name: 'Spider-Man', exact: true })).toBeVisible();
+  const input = page.getByRole('searchbox', { name: 'Search characters' });
+  await input.dispatchEvent('compositionstart');
+  await input.fill('iro');
+
+  const canCancelComposition = await input.evaluate(element => element.dispatchEvent(new KeyboardEvent('keydown', {
+    key: 'Escape', bubbles: true, cancelable: true, isComposing: true,
+  })));
+  expect(canCancelComposition).toBe(true);
+  await expect(input).toHaveValue('iro');
+  await expect(page).toHaveURL(/\?query=sp$/);
+  expect(requests.map(url => url.searchParams.get('query'))).toEqual(['sp']);
+
+  // Restore the applied text as an input method would when cancelling composition.
+  await input.fill('sp');
+  await input.dispatchEvent('compositionend');
+  await input.press('Escape');
+  await expect(input).toHaveValue('');
+  await expect(input).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Iron Man', exact: true })).toBeVisible();
+  expect(requests.map(url => url.searchParams.get('query'))).toEqual(['sp', null]);
+});
+
 test('allows clearing a locally invalid search without a pointless retry', async ({ page }) => {
   const { requests } = await mockCatalog(page);
   await page.goto('/?query=s&page=2');

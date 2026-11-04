@@ -19,6 +19,12 @@ function clear() {
   searchInput.value?.focus();
 }
 
+function clearOnEscape(event: KeyboardEvent) {
+  if (event.isComposing || isComposing.value) return;
+  event.preventDefault();
+  clear();
+}
+
 function submit() {
   if (isComposing.value) return;
   void submitSearch();
@@ -32,7 +38,7 @@ function submit() {
     <p class="lead">Explore the people, stories, and comics that make up the Marvel universe.</p>
     <form class="search-field" role="search" aria-label="Character search" novalidate @submit.prevent="submit">
       <label class="sr-only" for="character-search">Search characters</label>
-      <input id="character-search" ref="searchInput" v-model="search" type="search" minlength="2" placeholder="Search a character name" autocomplete="off" @keydown.esc.prevent="clear" @compositionstart="isComposing = true" @compositionend="isComposing = false" />
+      <input id="character-search" ref="searchInput" v-model="search" type="search" minlength="2" placeholder="Search a character name" autocomplete="off" @keydown.esc="clearOnEscape" @compositionstart="isComposing = true" @compositionend="isComposing = false" />
       <button v-if="search" type="button" class="search-action" aria-label="Clear search" title="Clear search" @click="clear"><X :size="20" /></button>
       <button type="submit" class="search-action" aria-label="Apply search" title="Apply search"><Search :size="20" /></button>
     </form>
