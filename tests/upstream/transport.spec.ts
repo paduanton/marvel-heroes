@@ -96,3 +96,64 @@ test('exhausted budget preserves fresh and stale catalog data without dispatchin
   expect((await recovered.json()).meta.cache.state).toBe('fresh');
   expect(source.calls()).toHaveLength(2);
 });
+
+test('canonical searches share a validator without merging distinct pages', async ({ request }) => {
+  const source = syntheticSource();
+  const path = `/api/v1/characters?query=${source.query}`;
+  const first = await request.get(path);
+  expect(first.status()).toBe(200);
+  const firstTag = first.headers().etag;
+  expect(firstTag).toBeTruthy();
+  const explicitQuery = encodeURIComponent(` ${source.query.toUpperCase()} `);
+  const equivalent = await request.get(`/api/v1/characters?per_page=20&page=1&query=${explicitQuery}`, {
+    headers: { 'If-None-Match': firstTag },
+  });
+  expect(equivalent.status()).toBe(304);
+  expect(equivalent.headers().etag).toBe(firstTag);
+  expect(await equivalent.body()).toHaveLength(0);
+  expect(source.calls()).toHaveLength(1);
+
+  const secondPath = `${path}&page=2`;
+  const second = await request.get(secondPath, { headers: { 'If-None-Match': firstTag } });
+  expect(second.status()).toBe(200);
+  expect(second.headers().etag).not.toBe(firstTag);
+  const payload = await second.json();
+  expect(payload.meta).toMatchObject({ page: 2, per_page: 20, total: 21, cache: { state: 'fresh' } });
+  expect(payload.data).toHaveLength(1);
+  expect(payload.data[0].id).toBe(source.id + 20);
+  expect((await request.get(secondPath, { headers: { 'If-None-Match': second.headers().etag } })).status()).toBe(304);
+  expect(source.calls()).toHaveLength(2);
+});
+
+test('revalidates a stale detail through upstream failure and recovery', async ({ request }) => {
+  const source = syntheticSource();
+  const path = `/api/v1/characters/${source.id}`;
+  const original = await request.get(path);
+  expect(original.status()).toBe(200);
+  const freshTag = original.headers().etag;
+  expect(freshTag).toBeTruthy();
+  const payload = await original.json();
+  expect(payload.meta.cache.state).toBe('fresh');
+
+  source.age([{ resource: 'character', parameters: { characterId: source.id } }]);
+  source.mode('failure');
+  const stale = await request.get(path, { headers: { 'If-None-Match': freshTag } });
+  expect(stale.status()).toBe(200);
+  const staleTag = stale.headers().etag;
+  expect(staleTag).toBeTruthy();
+  expect(staleTag).not.toBe(freshTag);
+  expect(await stale.json()).toMatchObject({ data: payload.data, meta: { cache: { state: 'stale' } } });
+  const unchanged = await request.get(path, { headers: { 'If-None-Match': staleTag } });
+  expect(unchanged.status()).toBe(304);
+  expect(unchanged.headers().etag).toBe(staleTag);
+  expect(await unchanged.body()).toHaveLength(0);
+  expect(source.calls()).toHaveLength(3);
+
+  source.mode('healthy');
+  const recovered = await request.get(path, { headers: { 'If-None-Match': staleTag } });
+  expect(recovered.status()).toBe(200);
+  expect(recovered.headers().etag).toBe(freshTag);
+  expect(await recovered.json()).toEqual(payload);
+  expect((await request.get(path, { headers: { 'If-None-Match': freshTag } })).status()).toBe(304);
+  expect(source.calls()).toHaveLength(4);
+});
