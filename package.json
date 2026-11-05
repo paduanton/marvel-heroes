@@ -41,8 +41,8 @@
         "openapi-typescript": "7.13.0",
         "prettier": "^3.4.2",
         "typescript": "^5.7.2",
-        "vite": "^6.0.5",
-        "vitest": "4.1.11",
+        "vite": "^6.4.4",
+        "vitest": "4.1.12",
         "vue-eslint-parser": "10.4.1",
         "vue-tsc": "^2.2.0"
     }
