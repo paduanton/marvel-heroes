@@ -22,3 +22,12 @@ Files changed:
 - app/Modules/Characters/Application/ListCharacters.php
 - docs/openapi.yaml
 ```
+
+## Automated Dependency Pull Requests
+
+Include this maintenance step in stage 7 hardening and every subsequent dependency update:
+
+1. Before updating packages, list this repository's open automated dependency PRs. Check the author, target branch, affected packages, requested versions and complete diff; record the PR numbers relevant to the increment.
+2. Compare each relevant PR with the planned manifest and lockfile changes. Distinguish updates to implement, updates already covered, and updates deferred for a separate decision. Major upgrades and overrides retain the approval requirements in `AGENTS.md`.
+3. Run the applicable audits and tests, then publish only explicitly approved commits. Recheck the PRs against the published target branch; a similar title or package name alone does not establish that a PR has been replaced.
+4. Propose closing only PRs whose complete update is already covered or superseded by the published changes. Name each PR, its reason for closure and the replacing commit. Obtain explicit approval for those PR numbers, then add a concise explanatory comment and close them. Commit or push approval alone does not authorize PR closure. Keep still-needed or deferred PRs open, and handle merging useful PRs as a separate approved action.
