@@ -1,0 +1,1440 @@
+{
+  "info": {
+    "name": "Marvel Heroes API",
+    "description": "Versioned portfolio catalog API: characters, comics, stories and first-party session identity. Start with the local environment and run the requests in order. Public examples are synthetic; the application has no public hosted base URL in this collection. The repository OpenAPI 3.1 contract is authoritative.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api.example.test"
+    },
+    {
+      "key": "character_query",
+      "value": "spider"
+    },
+    {
+      "key": "comic_query",
+      "value": "Spider-Man"
+    },
+    {
+      "key": "allow_identity_writes",
+      "value": "false"
+    }
+  ],
+  "item": [
+    {
+      "name": "Operation",
+      "description": "Stateless probes. Readiness checks Redis and local catalog configuration, not PostgreSQL or live-provider availability.",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Application process liveness."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Application is alive\", () => { pm.expect(pm.response.json().status).to.eql('ok'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Alive",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/health",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "health"
+                  ]
+                },
+                "description": "Application process liveness."
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/ready",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "ready"
+              ]
+            },
+            "description": "Configured local dependencies are ready."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Application is ready\", () => { pm.expect(pm.response.json().status).to.eql('ready'); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Ready",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/ready",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "ready"
+                  ]
+                },
+                "description": "Configured local dependencies are ready."
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                }
+              ],
+              "body": "{\n  \"status\": \"ready\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "description": "Anonymous reads from the application's v1 contract. These runnable requests pin the curated local catalog. They do not call a comics provider.",
+      "item": [
+        {
+          "name": "Search characters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/characters?query={{character_query}}&source=local&page=1&per_page=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "characters"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "{{character_query}}"
+                },
+                {
+                  "key": "source",
+                  "value": "local"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Search by case-insensitive name prefix. The test saves the first returned ID for later requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Pagination and source are present\", () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.meta.page).to.be.at.least(1); pm.expect(b.meta.total).to.be.at.least(b.data.length); pm.expect(b.meta.source).to.eql('local'); pm.expect(b.meta.cache.state).to.eql('fresh'); });",
+                  "if (pm.response.code === 200) pm.variables.set('character_id', pm.response.json().data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get character",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/characters/{{character_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "characters",
+                "{{character_id}}"
+              ]
+            },
+            "description": "Read one character by a numeric catalog ID."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Matches the selected character\", () => { pm.expect(String(pm.response.json().data.id)).to.eql(String(pm.variables.get('character_id'))); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search comics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/comics?query={{comic_query}}&source=local&page=1&per_page=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "comics"
+              ],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "{{comic_query}}"
+                },
+                {
+                  "key": "source",
+                  "value": "local"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Search by edition title or series. Pin meta.source for later pages; totals belong to that source."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Pagination and source are present\", () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.meta.page).to.be.at.least(1); pm.expect(b.meta.total).to.be.at.least(b.data.length); pm.expect(b.meta.source).to.eql('local'); pm.expect(b.meta.cache.state).to.eql('fresh'); });",
+                  "if (pm.response.code === 200) pm.variables.set('comic_id', pm.response.json().data[0].id);"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Comic page",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/comics?query={{comic_query}}&source=local&page=1&per_page=20",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comics"
+                  ],
+                  "query": [
+                    {
+                      "key": "query",
+                      "value": "{{comic_query}}"
+                    },
+                    {
+                      "key": "source",
+                      "value": "local"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Search by edition title or series. Pin meta.source for later pages; totals belong to that source."
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                }
+              ],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": 301,\n      \"title\": \"Example comic #1\",\n      \"description\": null,\n      \"format\": \"Comic\",\n      \"modified_at\": null,\n      \"on_sale_at\": null,\n      \"digital_id\": null,\n      \"digital_price\": null,\n      \"image_url\": null\n    }\n  ],\n  \"meta\": {\n    \"page\": 1,\n    \"per_page\": 20,\n    \"total\": 1,\n    \"source\": \"local\",\n    \"cache\": {\n      \"state\": \"fresh\"\n    }\n  }\n}"
+            },
+            {
+              "name": "Local rate limit",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/comics?query={{comic_query}}&source=local&page=1&per_page=20",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comics"
+                  ],
+                  "query": [
+                    {
+                      "key": "query",
+                      "value": "{{comic_query}}"
+                    },
+                    {
+                      "key": "source",
+                      "value": "local"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Search by edition title or series. Pin meta.source for later pages; totals belong to that source."
+              },
+              "status": "Too Many Requests",
+              "code": 429,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                },
+                {
+                  "key": "Retry-After",
+                  "value": "30"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://api.example.test/problems/resource-not-found\",\n  \"title\": \"rate limit exceeded\",\n  \"status\": 429,\n  \"code\": \"rate-limit-exceeded\",\n  \"detail\": \"Too many catalog requests. Please retry later.\",\n  \"request_id\": \"example-request\"\n}"
+            },
+            {
+              "name": "Source not configured",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/comics?query={{comic_query}}&source=local&page=1&per_page=20",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comics"
+                  ],
+                  "query": [
+                    {
+                      "key": "query",
+                      "value": "{{comic_query}}"
+                    },
+                    {
+                      "key": "source",
+                      "value": "local"
+                    },
+                    {
+                      "key": "page",
+                      "value": "1"
+                    },
+                    {
+                      "key": "per_page",
+                      "value": "20"
+                    }
+                  ]
+                },
+                "description": "Search by edition title or series. Pin meta.source for later pages; totals belong to that source."
+              },
+              "status": "Service Unavailable",
+              "code": 503,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://api.example.test/problems/resource-not-found\",\n  \"title\": \"catalog source unavailable\",\n  \"status\": 503,\n  \"code\": \"catalog-source-unavailable\",\n  \"detail\": \"The selected catalog source is not available.\",\n  \"request_id\": \"example-request\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get comic",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/comics/{{comic_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "comics",
+                "{{comic_id}}"
+              ]
+            },
+            "description": "Read an edition. Optional image and digital metadata can be null. Use ETag to validate the representation on later reads."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Matches the selected edition\", () => { pm.expect(String(pm.response.json().data.id)).to.eql(String(pm.variables.get('comic_id'))); });",
+                  "pm.test(\"Catalog cache headers\", () => { pm.expect(pm.response.headers.get('ETag')).to.be.a('string').and.not.empty; pm.expect(pm.response.headers.get('Cache-Control')).to.include('public'); });",
+                  "if (pm.response.code === 200) pm.variables.set('comic_etag', pm.response.headers.get('ETag'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Comic detail",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/comics/{{comic_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comics",
+                    "{{comic_id}}"
+                  ]
+                },
+                "description": "Read an edition. Optional image and digital metadata can be null. Use ETag to validate the representation on later reads."
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                },
+                {
+                  "key": "ETag",
+                  "value": "\"example-etag\""
+                },
+                {
+                  "key": "Cache-Control",
+                  "value": "public, max-age=300"
+                }
+              ],
+              "body": "{\n  \"data\": {\n    \"id\": 301,\n    \"title\": \"Example comic #1\",\n    \"description\": null,\n    \"format\": \"Comic\",\n    \"modified_at\": null,\n    \"on_sale_at\": null,\n    \"digital_id\": null,\n    \"digital_price\": null,\n    \"image_url\": null\n  },\n  \"meta\": {\n    \"source\": \"local\",\n    \"cache\": {\n      \"state\": \"fresh\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Revalidate comic",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "If-None-Match",
+                "value": "{{comic_etag}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/comics/{{comic_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "comics",
+                "{{comic_id}}"
+              ]
+            },
+            "description": "Send the validator saved by Get comic. An unchanged representation returns no body."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 304\", () => { pm.response.to.have.status(304); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Empty 304 body\", () => { pm.expect(pm.response.text()).to.eql(''); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Not modified",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  },
+                  {
+                    "key": "If-None-Match",
+                    "value": "{{comic_etag}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/comics/{{comic_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comics",
+                    "{{comic_id}}"
+                  ]
+                },
+                "description": "Send the validator saved by Get comic. An unchanged representation returns no body."
+              },
+              "status": "Not Modified",
+              "code": 304,
+              "header": [
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                },
+                {
+                  "key": "ETag",
+                  "value": "\"example-etag\""
+                }
+              ],
+              "body": ""
+            }
+          ]
+        },
+        {
+          "name": "List character comics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/characters/{{character_id}}/comics?page=1&per_page=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "characters",
+                "{{character_id}}",
+                "comics"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Read verified issue appearances, not a complete bibliography."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Pagination and source are present\", () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.meta.page).to.be.at.least(1); pm.expect(b.meta.total).to.be.at.least(b.data.length); pm.expect(b.meta.source).to.eql('local'); pm.expect(b.meta.cache.state).to.eql('fresh'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject invalid pagination",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/comics?per_page=101",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "comics"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "101"
+                }
+              ]
+            },
+            "description": "Pagination is validated before the catalog source is called."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 422\", () => { pm.response.to.have.status(422); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Problem format and code\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); const b = pm.response.json(); pm.expect(b.status).to.eql(pm.response.code); pm.expect(b.code).to.eql('validation-failed'); pm.expect(b.request_id).to.eql(pm.response.headers.get('X-Request-ID')); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Invalid page size",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/comics?per_page=101",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comics"
+                  ],
+                  "query": [
+                    {
+                      "key": "per_page",
+                      "value": "101"
+                    }
+                  ]
+                },
+                "description": "Pagination is validated before the catalog source is called."
+              },
+              "status": "Unprocessable Content",
+              "code": 422,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://api.example.test/problems/resource-not-found\",\n  \"title\": \"validation failed\",\n  \"status\": 422,\n  \"code\": \"validation-failed\",\n  \"detail\": \"One or more request parameters are invalid.\",\n  \"request_id\": \"example-request\",\n  \"errors\": {\n    \"per_page\": [\n      \"Invalid page size.\"\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unknown comic",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/comics/9007199254740992",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "comics",
+                "9007199254740992"
+              ]
+            },
+            "description": "An invalid or unknown catalog ID does not resolve to a different issue."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 404\", () => { pm.response.to.have.status(404); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Problem format and code\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); const b = pm.response.json(); pm.expect(b.status).to.eql(pm.response.code); pm.expect(b.code).to.eql('resource-not-found'); pm.expect(b.request_id).to.eql(pm.response.headers.get('X-Request-ID')); });"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Not found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json, application/problem+json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/comics/9007199254740992",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "comics",
+                    "9007199254740992"
+                  ]
+                },
+                "description": "An invalid or unknown catalog ID does not resolve to a different issue."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                },
+                {
+                  "key": "X-Request-ID",
+                  "value": "example-request"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://api.example.test/problems/resource-not-found\",\n  \"title\": \"resource not found\",\n  \"status\": 404,\n  \"code\": \"resource-not-found\",\n  \"detail\": \"The requested catalog resource was not found.\",\n  \"request_id\": \"example-request\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Stories",
+      "description": "These related routes keep the original v1 shape. A story is not a story arc.",
+      "item": [
+        {
+          "name": "List character stories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/characters/{{character_id}}/stories?page=1&per_page=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "characters",
+                "{{character_id}}",
+                "stories"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Read the curated character's indexed stories."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Pagination and source are present\", () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.meta.page).to.be.at.least(1); pm.expect(b.meta.total).to.be.at.least(b.data.length); pm.expect(b.meta.source).to.eql('local'); pm.expect(b.meta.cache.state).to.eql('fresh'); });",
+                  "if (pm.response.code === 200) pm.variables.set('story_id', pm.response.json().data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List story comics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stories/{{story_id}}/comics?page=1&per_page=20",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "stories",
+                "{{story_id}}",
+                "comics"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "per_page",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "List editions that contain the selected story."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Pagination and source are present\", () => { const b = pm.response.json(); pm.expect(b.data).to.be.an('array'); pm.expect(b.meta.page).to.be.at.least(1); pm.expect(b.meta.total).to.be.at.least(b.data.length); pm.expect(b.meta.source).to.eql('local'); pm.expect(b.meta.cache.state).to.eql('fresh'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Identity (disposable loopback only)",
+      "description": "Sanctum uses session cookies and CSRF, not Bearer tokens. This write flow is skipped unless explicitly enabled for a loopback test stack. Run in order with a fresh cookie jar.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const base = String(pm.variables.get('base_url') || '');",
+              "if (String(pm.variables.get('allow_identity_writes')) !== 'true' || !/^http:\\/\\/(127\\.0\\.0\\.1|localhost):[0-9]+$/.test(base)) { pm.execution.skipRequest(); }",
+              "if (!pm.variables.get('test_email')) { const id = pm.variables.replaceIn('{{$randomUUID}}'); pm.variables.set('test_email', `catalog-${id}@example.test`); pm.variables.set('test_password', `Catalog-test-${id}`); }"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "Initialize CSRF for registration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sanctum/csrf-cookie",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sanctum",
+                "csrf-cookie"
+              ]
+            },
+            "description": "Initializes the session cookie jar and saves the decoded XSRF cookie only for this run."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 204\", () => { pm.response.to.have.status(204); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "if (pm.response.code === 204) { const value = pm.cookies.get('XSRF-TOKEN'); pm.test('CSRF cookie issued', () => pm.expect(value).to.be.a('string').and.not.empty); if (value) pm.variables.set('xsrf_token', decodeURIComponent(value)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register test identity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrf_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Creates a disposable identity and establishes a session.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Catalog test\",\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"password_confirmation\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 201\", () => { pm.response.to.have.status(201); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "pm.test(\"Registration creates the requested identity\", () => { const b = pm.response.json(); pm.expect(b.data.email).to.eql(pm.variables.get('test_email')); pm.expect(b.data).not.to.have.property('password'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read current identity",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "Returns the current identity while the session is valid."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "pm.test(\"Current identity matches\", () => { pm.expect(pm.response.json().data.email).to.eql(pm.variables.get('test_email')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh CSRF after registration",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sanctum/csrf-cookie",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sanctum",
+                "csrf-cookie"
+              ]
+            },
+            "description": "Initializes the session cookie jar and saves the decoded XSRF cookie only for this run."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 204\", () => { pm.response.to.have.status(204); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "if (pm.response.code === 204) { const value = pm.cookies.get('XSRF-TOKEN'); pm.test('CSRF cookie issued', () => pm.expect(value).to.be.a('string').and.not.empty); if (value) pm.variables.set('xsrf_token', decodeURIComponent(value)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log out",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrf_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Invalidates the session."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 204\", () => { pm.response.to.have.status(204); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify anonymous after logout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/me",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "me"
+              ]
+            },
+            "description": "A logged-out session cannot read the identity."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 401\", () => { pm.response.to.have.status(401); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "pm.test(\"Problem format and code\", () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); const b = pm.response.json(); pm.expect(b.status).to.eql(pm.response.code); pm.expect(b.code).to.eql('unauthenticated'); pm.expect(b.request_id).to.eql(pm.response.headers.get('X-Request-ID')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Initialize CSRF for login",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sanctum/csrf-cookie",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sanctum",
+                "csrf-cookie"
+              ]
+            },
+            "description": "Initializes the session cookie jar and saves the decoded XSRF cookie only for this run."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 204\", () => { pm.response.to.have.status(204); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "if (pm.response.code === 204) { const value = pm.cookies.get('XSRF-TOKEN'); pm.test('CSRF cookie issued', () => pm.expect(value).to.be.a('string').and.not.empty); if (value) pm.variables.set('xsrf_token', decodeURIComponent(value)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Log in as test identity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrf_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Establishes a new session with the same disposable identity.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 200\", () => { pm.response.to.have.status(200); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "pm.test(\"Login returns no bearer token\", () => { const b = pm.response.json(); pm.expect(b.data.email).to.eql(pm.variables.get('test_email')); pm.expect(b).not.to.have.property('token'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh CSRF after login",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/sanctum/csrf-cookie",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "sanctum",
+                "csrf-cookie"
+              ]
+            },
+            "description": "Initializes the session cookie jar and saves the decoded XSRF cookie only for this run."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 204\", () => { pm.response.to.have.status(204); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });",
+                  "if (pm.response.code === 204) { const value = pm.cookies.get('XSRF-TOKEN'); pm.test('CSRF cookie issued', () => pm.expect(value).to.be.a('string').and.not.empty); if (value) pm.variables.set('xsrf_token', decodeURIComponent(value)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "End test session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json, application/problem+json"
+              },
+              {
+                "key": "X-XSRF-TOKEN",
+                "value": "{{xsrf_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Closes the final test session; the isolated database is removed by the runner."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Returns 204\", () => { pm.response.to.have.status(204); });",
+                  "pm.test(\"Includes a request ID\", () => { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.a('string').and.not.empty; });",
+                  "pm.test(\"Session response is not cacheable\", () => { pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); pm.expect(pm.response.headers.has('ETag')).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -6,7 +6,9 @@ import { setTimeout } from 'node:timers/promises';
 
 const upstream = process.argv.includes('--upstream');
 const nginx = process.argv.includes('--nginx') || upstream;
-const forwardedArguments = process.argv.slice(2).filter(argument => !['--', '--nginx', '--upstream'].includes(argument));
+const postman = process.argv.includes('--postman');
+const forwardedArguments = process.argv.slice(2).filter(argument => !['--', '--nginx', '--upstream', '--postman'].includes(argument));
+if (postman && (nginx || forwardedArguments.length > 0)) throw new Error('Run Postman without deployment or Playwright options.');
 const outputIsExplicit = forwardedArguments.some(argument => argument === '--output' || argument.startsWith('--output='));
 const projects =
   nginx && !forwardedArguments.some(argument => argument === '--project' || argument.startsWith('--project='))
@@ -23,13 +25,15 @@ const targets = upstream && !selective
 if (targets.length === 0) throw new Error('No synthetic upstream test files were found.');
 
 async function runStack(project) {
-  const port = process.env.FULL_STACK_PORT ?? (nginx ? '4175' : '4174');
+  const port = process.env.FULL_STACK_PORT ?? (postman ? '4176' : nginx ? '4175' : '4174');
+  if (!/^[1-9][0-9]{0,4}$/.test(port) || Number(port) > 65535) throw new Error('Invalid disposable stack port.');
   const server = fork(resolve('tests/full-stack/server.mjs'), [], {
     stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
     env: {
       ...process.env,
       FULL_STACK_TRANSPORT: nginx ? 'nginx' : 'php',
       FULL_STACK_UPSTREAM: upstream ? '1' : '0',
+      FULL_STACK_LOCAL_CATALOG: postman ? '1' : '0',
       FULL_STACK_PORT: port,
     },
   });
@@ -69,16 +73,23 @@ async function runStack(project) {
       await setTimeout(500);
     }
     if (!ready || interrupted) throw new Error('Disposable HTTP service is not ready.');
-    tests = spawn(
-      process.execPath,
-      [
+    const command = postman ? (process.env.POSTMAN_CLI ?? 'postman') : process.execPath;
+    const argumentsToRun = postman
+      ? [
+        'collection', 'run', 'docs/postman/marvel-heroes.postman_collection.json',
+        '--env-var', `base_url=http://127.0.0.1:${port}`, '--env-var', 'allow_identity_writes=true',
+      ]
+      : [
         'node_modules/@playwright/test/cli.js',
         'test',
         '--config',
         upstream ? 'playwright.upstream.config.ts' : nginx ? 'playwright.deployment.config.ts' : 'playwright.full-stack.config.ts',
         ...forwardedArguments,
         ...project,
-      ],
+      ];
+    tests = spawn(
+      command,
+      argumentsToRun,
       {
         stdio: 'inherit',
         env: {

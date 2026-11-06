@@ -12,6 +12,9 @@ Vue 3 SPA -> Laravel REST (/api/v1) -> acervo local
 
 O contrato HTTP está em [docs/openapi.yaml](docs/openapi.yaml). As decisões de arquitetura e o guia de desenvolvimento estão em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) e [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Integrações antigas estão descritas em [docs/legacy-api.md](docs/legacy-api.md).
 
+A [collection do Postman](docs/postman/README.md) documenta os endpoints e
+executa exemplos de catálogo e sessão em ambiente local descartável.
+
 ## Execução local
 
 1. Copie `.env.example` para `.env` e informe uma senha local em `DB_PASSWORD`. Mantenha `CATALOG_PROVIDER=local`; o catálogo não exige chaves externas.

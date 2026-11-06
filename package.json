@@ -16,6 +16,7 @@
         "test:full-stack": "node tests/full-stack/run.mjs",
         "test:deployment": "node tests/full-stack/run.mjs --nginx",
         "test:upstream": "node tests/full-stack/run.mjs --upstream",
+        "test:postman": "node tests/full-stack/run.mjs --postman",
         "lint": "eslint . --max-warnings=0",
         "format": "prettier --write resources/js"
     },

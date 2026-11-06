@@ -13,6 +13,7 @@ const web = `${run}-web`;
 const upstream = `${run}-upstream`;
 const nginx = process.env.FULL_STACK_TRANSPORT === 'nginx';
 const syntheticUpstream = process.env.FULL_STACK_UPSTREAM === '1';
+const localCatalog = process.env.FULL_STACK_LOCAL_CATALOG === '1';
 const image = process.env.FULL_STACK_IMAGE ?? (nginx ? 'marvel-heroes-deployment-app' : 'marvel-heroes-testing-identity');
 const webImage = process.env.FULL_STACK_WEB_IMAGE ?? 'marvel-heroes-deployment-web';
 const port = process.env.FULL_STACK_PORT ?? '4174';
@@ -81,7 +82,8 @@ try {
     ? JSON.parse(docker(['inspect', '--format', '{{json .NetworkSettings.Networks}}', postgres]))[network].IPAddress
     : 'postgres';
   const settings = [
-    'APP_ENV=integration', 'APP_DEBUG=false', 'APP_NAME=Marvel Heroes', 'APP_KEY', 'CATALOG_PROVIDER=marvel-fixture',
+    'APP_ENV=integration', 'APP_DEBUG=false', 'APP_NAME=Marvel Heroes', 'APP_KEY',
+    `CATALOG_PROVIDER=${localCatalog ? 'local' : 'marvel-fixture'}`,
     nginx ? 'MARVEL_DEPLOYMENT_TEST=1' : 'MARVEL_HTTP_TEST=1',
     `APP_URL=http://127.0.0.1:${port}`, `SANCTUM_STATEFUL_DOMAINS=127.0.0.1:${port}`,
     'DB_CONNECTION=pgsql', `DB_HOST=${databaseHost}`, 'DB_PORT=5432', 'DB_DATABASE=identity_test', 'DB_USERNAME=marvel', 'DB_PASSWORD',
