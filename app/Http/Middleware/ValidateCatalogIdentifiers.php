@@ -12,7 +12,7 @@ final class ValidateCatalogIdentifiers
 {
     public function handle(Request $request, Closure $next): Response
     {
-        foreach (['characterId', 'storyId', 'idCharacter'] as $parameter) {
+        foreach (['characterId', 'storyId', 'comicId', 'idCharacter'] as $parameter) {
             $value = $request->route($parameter);
             if ($value !== null && filter_var(ltrim((string) $value, '0'), FILTER_VALIDATE_INT, [
                 'options' => ['min_range' => 1, 'max_range' => CatalogLimits::MAX_ID],

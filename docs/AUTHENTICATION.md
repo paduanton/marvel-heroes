@@ -35,6 +35,10 @@ Further credential, migration, Docker, session-security or protected-route chang
 
 ## Secret handling
 
+The default local catalog requires no provider credentials. The original
+Marvel variables below are retained for synthetic regression only; do not
+configure real Marvel keys for the application. See [CATALOG-SOURCE.md](CATALOG-SOURCE.md).
+
 `MARVEL_PRIVATE_KEY`, `APP_KEY`, database passwords, Redis passwords, mail credentials, and any environment-encryption key are secrets. `MARVEL_PUBLIC_KEY`, base URL, timeout, TTL, and request budget are server configuration; they still stay out of browser bundles.
 
 - Local development uses an ignored `.env` created from `.env.example`. The example contains names and safe defaults only.
@@ -42,5 +46,5 @@ Further credential, migration, Docker, session-security or protected-route chang
 - Production injects each secret from the deployment platform's secret manager at runtime into the PHP service only. Nginx and the built Vue assets receive none.
 - `config/marvel.php` is the only configuration boundary for Marvel values. Application code reads `config()`, never `env()` directly. Cache configuration only after runtime secrets are present.
 - A committed `.env.encrypted` is permitted only when its `LARAVEL_ENV_ENCRYPTION_KEY` is held separately in a password manager or deployment secret manager. Platform-managed secrets remain the preferred production path.
-- Rotate a Marvel credential pair by updating the secret manager, deploying new PHP workers, confirming upstream calls, then revoking the old key at the provider. Rotate `APP_KEY` through an approved maintenance procedure because it invalidates encrypted cookies and sessions.
+- Rotate `APP_KEY` through an approved maintenance procedure because it invalidates encrypted cookies and sessions.
 - Logs, exception payloads, screenshots, OpenAPI examples, commits, and agent handoffs contain secret names but never secret values.

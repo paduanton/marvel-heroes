@@ -3,6 +3,7 @@
 use App\Http\Middleware\ApiCacheHeaders;
 use App\Http\Middleware\RequestId;
 use App\Http\Middleware\SecurityHeaders;
+use App\Shared\Catalog\CatalogSourceUnavailableException;
 use App\Shared\Marvel\Exceptions\MarvelBudgetExhaustedException;
 use App\Shared\Marvel\Exceptions\MarvelRefreshInProgressException;
 use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
@@ -67,6 +68,9 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         $exceptions->render(function (MarvelBudgetExhaustedException $exception, Request $request) use ($problem) {
             return $request->is('api/*') ? $problem($request, 503, 'upstream-budget-exhausted', 'Catalog data is temporarily unavailable.') : null;
+        });
+        $exceptions->render(function (CatalogSourceUnavailableException $exception, Request $request) use ($problem) {
+            return $request->is('api/*') ? $problem($request, 503, 'catalog-source-unavailable', 'The selected catalog source is not available.') : null;
         });
         $exceptions->render(function (MarvelRefreshInProgressException $exception, Request $request) use ($problem) {
             return $request->is('api/*') ? $problem($request, 503, 'cache-refresh-in-progress', 'Catalog data is temporarily unavailable.') : null;

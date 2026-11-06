@@ -15,6 +15,7 @@ if (! getenv('TEST_REDIS_HOST')) {
 }
 
 putenv('APP_ENV=testing');
+putenv('CATALOG_PROVIDER=marvel-fixture');
 putenv('APP_KEY=base64:'.base64_encode(random_bytes(32)));
 $options = json_decode($argv[1], true, flags: JSON_THROW_ON_ERROR);
 $app = require __DIR__.'/../../bootstrap/app.php';

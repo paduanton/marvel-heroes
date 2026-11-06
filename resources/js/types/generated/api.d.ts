@@ -264,8 +264,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Check cache access and credential configuration
-         * @description Stateless probe of cache access and Marvel credential presence. Does not start a session, check PostgreSQL, call Marvel or validate the credentials with it.
+         * Check cache access and catalog configuration
+         * @description Stateless probe of cache access and the configured catalog source. Does not start a session, check PostgreSQL or call an external provider.
          */
         get: {
             parameters: {
@@ -276,7 +276,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Cache is accessible and Marvel credentials are configured. */
+                /** @description Cache and the configured catalog are ready. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -288,7 +288,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description Cache is unavailable or Marvel credentials are missing. */
+                /** @description Cache or the configured catalog is unavailable. */
                 503: {
                     headers: {
                         [name: string]: unknown;
@@ -326,6 +326,8 @@ export interface paths {
                 query?: {
                     /** @description Case-insensitive character name prefix. */
                     query?: components["parameters"]["SearchQuery"];
+                    /** @description Pin the source for discovery pagination. A live source must be configured to request live results. */
+                    source?: components["parameters"]["CatalogSource"];
                     /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
                     page?: components["parameters"]["Page"];
                     per_page?: components["parameters"]["PerPage"];
@@ -455,6 +457,152 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/comics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search comic editions
+         * @description Public catalog search. Omit source to use the configured catalog. Pin the returned source for subsequent pages.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Case-insensitive title or series search. */
+                    query?: string;
+                    /** @description Pin the source for discovery pagination. A live source must be configured to request live results. */
+                    source?: components["parameters"]["CatalogSource"];
+                    /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
+                    page?: components["parameters"]["Page"];
+                    per_page?: components["parameters"]["PerPage"];
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: components["responses"]["ComicCollectionResponse"];
+                /** @description Representation has not changed. */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                422: components["responses"]["ValidationProblem"];
+                429: components["responses"]["RateLimitProblem"];
+                502: components["responses"]["UpstreamProblem"];
+                503: components["responses"]["CatalogUnavailableProblem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comics/{comicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one comic edition */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    comicId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description A comic edition. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ComicResource"];
+                    };
+                };
+                /** @description Representation has not changed. */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                404: components["responses"]["NotFoundProblem"];
+                429: components["responses"]["RateLimitProblem"];
+                502: components["responses"]["UpstreamProblem"];
+                503: components["responses"]["CatalogUnavailableProblem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/characters/{characterId}/comics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List verified comic appearances of a character */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
+                    page?: components["parameters"]["Page"];
+                    per_page?: components["parameters"]["PerPage"];
+                };
+                header?: never;
+                path: {
+                    /** @description Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch. */
+                    characterId: components["parameters"]["CharacterId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: components["responses"]["ComicCollectionResponse"];
+                /** @description Representation has not changed. */
+                304: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                404: components["responses"]["NotFoundProblem"];
+                422: components["responses"]["ValidationProblem"];
+                429: components["responses"]["RateLimitProblem"];
+                502: components["responses"]["UpstreamProblem"];
+                503: components["responses"]["CatalogUnavailableProblem"];
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/stories/{storyId}/comics": {
         parameters: {
             query?: never;
@@ -537,9 +685,15 @@ export interface components {
             page: number;
             per_page: number;
             total: number;
+            source?: components["schemas"]["CatalogSource"];
             cache: components["schemas"]["CatalogCache"];
         };
-        /** @description Server cache state at response creation. Fresh includes a successful upstream load; stale means fallback within the existing retention window. Browser caching can reuse this snapshot. This is not the publication or modification date of Marvel content. */
+        /**
+         * @description Source of the response data, independent of its cache state.
+         * @enum {string}
+         */
+        CatalogSource: "local" | "live";
+        /** @description Server cache state at response creation. Fresh includes data read from the local snapshot; stale means reuse of an older cached response. This is not the publication or modification date of the content. */
         CatalogCache: {
             /** @enum {string} */
             state: "fresh" | "stale";
@@ -581,6 +735,14 @@ export interface components {
             data: components["schemas"]["Character"];
             meta: {
                 cache: components["schemas"]["CatalogCache"];
+                source?: components["schemas"]["CatalogSource"];
+            };
+        };
+        ComicResource: {
+            data: components["schemas"]["Comic"];
+            meta: {
+                cache: components["schemas"]["CatalogCache"];
+                source?: components["schemas"]["CatalogSource"];
             };
         };
         CharacterCollection: {
@@ -610,6 +772,15 @@ export interface components {
         };
     };
     responses: {
+        /** @description A paginated comic collection. */
+        ComicCollectionResponse: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["ComicCollection"];
+            };
+        };
         /** @description A valid session is required. */
         UnauthenticatedProblem: {
             headers: {
@@ -673,7 +844,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description Marvel API could not be reached and no stale result is available. */
+        /** @description The external catalog could not be reached and no usable result is available. */
         UpstreamProblem: {
             headers: {
                 [name: string]: unknown;
@@ -682,7 +853,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description The upstream budget is exhausted, refresh is in progress without stale data, or Redis is unavailable. Redis failures use code dependency-unavailable; the server never bypasses cache or budget to call Marvel. */
+        /** @description The selected source is unavailable, the upstream budget is exhausted, refresh is in progress without stale data, or Redis is unavailable. Redis failures use code dependency-unavailable. */
         CatalogUnavailableProblem: {
             headers: {
                 [name: string]: unknown;
@@ -693,6 +864,8 @@ export interface components {
         };
     };
     parameters: {
+        /** @description Pin the source for discovery pagination. A live source must be configured to request live results. */
+        CatalogSource: "local" | "live";
         /** @description Case-insensitive character name prefix. */
         SearchQuery: string;
         /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */

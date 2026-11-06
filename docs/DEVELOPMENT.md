@@ -3,7 +3,6 @@
 ## Requirements
 
 - Docker Desktop with the Linux container engine running.
-- Marvel public and private credentials for real catalog requests.
 - Node 22.12+ and the pnpm version pinned in `package.json` for host-side frontend and commit checks.
 
 Local secrets belong in the ignored `.env`. The example contains names and defaults only. Application code reads configuration; production secrets must be injected at runtime into PHP. No Marvel credentials are required for the isolated tests below.
@@ -25,11 +24,11 @@ docker compose up -d
 docker compose exec app php artisan migrate
 ```
 
-Set `MARVEL_PUBLIC_KEY` and `MARVEL_PRIVATE_KEY` in the local `.env` before starting real catalog requests. For installations using the old names, replace `MARVEL_PUBLICKEY`, `MARVEL_PRIVATEKEY`, and `MARVEL_URL` with `MARVEL_PUBLIC_KEY`, `MARVEL_PRIVATE_KEY`, and `MARVEL_BASE_URL`.
+Keep `CATALOG_PROVIDER=local` for normal use. No upstream credentials are needed. The original Marvel settings now belong only to the synthetic transport regression; see [CATALOG-SOURCE.md](CATALOG-SOURCE.md).
 
 The one-off key-generation and migration commands above are for a new installation only. Key generation mounts the host `.env` explicitly so the key survives container removal. An existing installation keeps its current `APP_KEY` and requires review and explicit authorization before migrations. Container startup never runs migrations automatically. Subsequent starts use `docker compose up -d --build`.
 
-Open `http://localhost:8080`. `/health` is a stateless application-liveness probe; `/ready` is a stateless check of cache access and Marvel credential presence. Neither starts a session. Readiness does not check PostgreSQL, authenticate with Marvel or establish upstream availability. The Compose FPM healthcheck verifies a local TCP connection to port 9000.
+Open `http://localhost:8080`. `/health` is a stateless application-liveness probe; `/ready` checks cache access and the configured catalog. Neither starts a session. Readiness does not check PostgreSQL or make upstream HTTP requests. The Compose FPM healthcheck verifies a local TCP connection to port 9000.
 
 ## Backend validation
 
@@ -138,18 +137,21 @@ pnpm exec playwright test --workers=2
 
 Alternatively, with Microsoft Edge installed, set `$env:PLAYWRIGHT_CHANNEL = 'msedge'` before running the tests. The suite builds production assets and starts its own test server on port 4173; this is not a development instance of the Laravel API. Requests and image responses are simulated, so no `.env`, Marvel credentials or Redis instance are needed. Desktop, mobile and narrow viewports are configured in `playwright.config.ts`. Do not run another frontend build while this suite is active: both use `public/build`. Screenshots, traces on failure and reports stay in ignored output directories.
 
-## Cache warmup
+## Cache warmup (legacy regression fixture)
+
+Run these commands only inside the isolated synthetic regression environment,
+not with the default Compose services.
 
 ```powershell
-docker compose run --rm app php artisan marvel:cache:warm
+php artisan marvel:cache:warm
 ```
 
-This operator command may call Marvel and consume the configured budget. It uses `MARVEL_WARM_QUERIES` unless repeatable `--query` options replace that list, and reuses fresh cache entries without forcing refresh. Without configured queries or explicit overrides, it performs no warmup.
+The local snapshot does not need warmup. The command is retained for isolated synthetic regression. In that fixture it uses `MARVEL_WARM_QUERIES` unless repeatable `--query` options replace that list, and reuses fresh cache entries without forcing refresh.
 
 To warm only the unfiltered initial catalog (page one, 20 items), explicitly pass an empty query:
 
 ```powershell
-docker compose run --rm app php artisan marvel:cache:warm --query=
+php artisan marvel:cache:warm --query=
 ```
 
 Repeat `--query` to include named searches in the same override list. The command does not preload subsequent pages or automatically add the initial catalog to configured searches.
@@ -157,14 +159,14 @@ Repeat `--query` to include named searches in the same override list. The comman
 Preview the normalized, deduplicated list before executing:
 
 ```powershell
-docker compose run --rm app php artisan marvel:cache:warm --query= --query="Spider-Man" --dry-run
+php artisan marvel:cache:warm --query= --query="Spider-Man" --dry-run
 ```
 
 `--dry-run` validates and prints the plan without upstream requests or cache changes. Its count is unique queries, not an estimate of quota usage: actual calls depend on fresh cache and bounded retries. Empty queries select the initial catalog; other prefixes must contain 2-100 characters after trimming. The entire list is validated before work starts, and equivalent lowercase queries are executed once.
 
 Execution reports fresh, stale and failed entries separately. Fresh includes reuse of an existing fresh entry; it does not imply an upstream call or forced refresh. Stale fallback emits a warning, not a claim of successful refresh. Known source/budget/lock failures do not prevent later queries from using available cache, and diagnostics remain safe. Exit `0` means every planned query is available (possibly stale), or the plan is empty/dry-run; `1` means at least one query is unavailable; `2` means invalid input with no queries executed.
 
-## Upstream timeout
+## Upstream timeout (legacy regression fixture)
 
 `MARVEL_TIMEOUT_SECONDS` must resolve to a positive integer number of seconds (default: `5`). Zero or negative effective values block upstream requests before any HTTP attempt or budget reservation. Existing fresh or valid stale cache can still serve the catalog; an uncached request returns `502` with `upstream-unavailable`, without exposing the configuration error. After correcting local configuration, reload the application/configuration cache as appropriate for the environment. This check runs when the client needs upstream data, not at startup or in `/ready`.
 
@@ -174,7 +176,7 @@ The PostgreSQL PDO connection uses `DB_CONNECT_TIMEOUT` in integer seconds, defa
 
 ## Redis availability
 
-When PhpRedis reports a dependency failure, API routes and `/sanctum/csrf-cookie` return `503 application/problem+json` with code `dependency-unavailable` and a correlated `request_id`. Identity responses remain `private, no-store`. The application does not bypass cache, budget, authentication or rate limiting to keep serving requests; the stateless liveness probe remains available, and readiness returns `503` with `status: not_ready` when its cache check fails. Readiness still requires configured Marvel credentials after recovery.
+When PhpRedis reports a dependency failure, API routes and `/sanctum/csrf-cookie` return `503 application/problem+json` with code `dependency-unavailable` and a correlated `request_id`. Identity responses remain `private, no-store`. The application does not bypass rate limiting or authentication in local mode; the stateless liveness probe remains available, and readiness returns `503` with `status: not_ready` when its cache check fails.
 
 Both PhpRedis connections use explicit connection and read timeouts, each defaulting to one second, with command retries disabled (`max_retries=0`). Operators can set `REDIS_CONNECT_TIMEOUT` and `REDIS_READ_TIMEOUT` to positive seconds, including fractions; do not use zero or negative values to disable these bounds. After changing runtime configuration, reload the application and rebuild its configuration cache as appropriate for the environment.
 

@@ -2,6 +2,7 @@
 
 namespace App\Shared\Catalog;
 
+use App\Shared\Cache\CatalogCacheMetadata;
 use App\Shared\Marvel\Contracts\MarvelCatalogGateway;
 use Illuminate\Support\Facades\File;
 use LogicException;
@@ -21,7 +22,7 @@ final class LocalCatalog implements MarvelCatalogGateway
 
     private array $issuesByCharacter = [];
 
-    public function __construct()
+    public function __construct(private readonly ?CatalogCacheMetadata $metadata = null)
     {
         $snapshot = json_decode(File::get(resource_path('catalog/gcd-v1.json')), true, flags: JSON_THROW_ON_ERROR);
         if (($snapshot['version'] ?? null) !== 1) {
@@ -86,6 +87,8 @@ final class LocalCatalog implements MarvelCatalogGateway
 
     public function character(int $characterId): ?array
     {
+        $this->metadata?->recordSource('local');
+
         return $this->characters[$characterId] ?? null;
     }
 
@@ -110,6 +113,8 @@ final class LocalCatalog implements MarvelCatalogGateway
 
     public function issue(int $comicId): ?array
     {
+        $this->metadata?->recordSource('local');
+
         return $this->issues[$comicId] ?? null;
     }
 
@@ -134,6 +139,8 @@ final class LocalCatalog implements MarvelCatalogGateway
 
     private function page(array $items, int $offset, int $limit): array
     {
+        $this->metadata?->recordSource('local');
+
         return ['items' => array_slice(array_values($items), $offset, $limit), 'total' => count($items)];
     }
 }

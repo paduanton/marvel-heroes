@@ -14,11 +14,14 @@ final class CatalogCacheMetadata
 
     public function handle(Request $request, Closure $next): Response
     {
-        $this->metadata->record(false);
+        $this->metadata->reset();
         $response = $next($request);
         if ($response instanceof JsonResponse && $response->getStatusCode() === 200) {
             $body = $response->getData(true);
             $body['meta']['cache'] = ['state' => $this->metadata->state()];
+            if ($this->metadata->source() !== null) {
+                $body['meta']['source'] = $this->metadata->source();
+            }
             $response->setData($body);
         }
 

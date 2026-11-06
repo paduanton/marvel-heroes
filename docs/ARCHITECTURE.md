@@ -3,16 +3,21 @@
 Marvel Heroes is a modular monolith. Laravel owns the versioned catalog API and the Vue SPA is served by the same application origin.
 
 ```text
-Vue SPA -> /api/v1 -> Application actions -> cached Marvel gateway -> Marvel API
-                              |                    |
-                              |                    +-> Redis (fresh/stale catalog entries and budget)
+Vue SPA -> /api/v1 -> Application actions -> curated local catalog
+                              |
+                              +-> Redis (rate limits and sessions)
                               +-> API Resources
                               +-> Identity/Sanctum -> PostgreSQL (identity only)
 ```
 
 `app/Modules` holds product-facing behavior. `Application` coordinates a use case; `Domain` holds catalog vocabulary and durable rules; `Presentation` owns HTTP validation, status codes, and serialization. `app/Shared/Marvel` isolates signed upstream HTTP and payload normalization. The upstream response is never a public contract.
 
-## Cache behavior
+The original Marvel Comics API is retired from the runtime path. See
+[CATALOG-SOURCE.md](CATALOG-SOURCE.md) for the transition, local data license and
+live-provider acceptance criteria. The Marvel client and its cache policy below
+are retained for regression against synthetic fixtures, not for public traffic.
+
+## Cache behavior (legacy transport fixture)
 
 Each normalized request produces a stable Redis key. A fresh entry is served immediately. On expiry, one request holds a short cache lock while concurrent callers receive a valid stale entry. Failures and exhausted upstream budget also serve stale data when possible. The configured daily budget is a guardrail, not a claim about the upstream provider's current quota.
 

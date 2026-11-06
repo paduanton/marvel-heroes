@@ -6,6 +6,7 @@ use App\Http\Middleware\ValidateCatalogIdentifiers;
 use App\Modules\Characters\Presentation\Controllers\ListCharactersController;
 use App\Modules\Characters\Presentation\Controllers\ListCharacterStoriesController;
 use App\Modules\Characters\Presentation\Controllers\ShowCharacterController;
+use App\Modules\Comics\Presentation\Controllers\ComicDiscoveryController;
 use App\Modules\Comics\Presentation\Controllers\ListStoryComicsController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
@@ -26,6 +27,9 @@ Route::prefix('v1')->name('catalog.')->withoutMiddleware(EnsureFrontendRequestsA
     Route::get('characters', ListCharactersController::class)->name('characters.index');
     Route::get('characters/{characterId}', ShowCharacterController::class)->whereNumber('characterId')->name('characters.show');
     Route::get('characters/{characterId}/stories', ListCharacterStoriesController::class)->whereNumber('characterId')->name('characters.stories');
+    Route::get('characters/{characterId}/comics', [ComicDiscoveryController::class, 'forCharacter'])->whereNumber('characterId')->name('characters.comics');
+    Route::get('comics', [ComicDiscoveryController::class, 'index'])->name('comics.index');
+    Route::get('comics/{comicId}', [ComicDiscoveryController::class, 'show'])->whereNumber('comicId')->name('comics.show');
     Route::get('stories/{storyId}/comics', ListStoryComicsController::class)->whereNumber('storyId')->name('stories.comics');
 });
 

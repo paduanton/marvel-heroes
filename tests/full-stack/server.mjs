@@ -81,7 +81,7 @@ try {
     ? JSON.parse(docker(['inspect', '--format', '{{json .NetworkSettings.Networks}}', postgres]))[network].IPAddress
     : 'postgres';
   const settings = [
-    'APP_ENV=integration', 'APP_DEBUG=false', 'APP_NAME=Marvel Heroes', 'APP_KEY',
+    'APP_ENV=integration', 'APP_DEBUG=false', 'APP_NAME=Marvel Heroes', 'APP_KEY', 'CATALOG_PROVIDER=marvel-fixture',
     nginx ? 'MARVEL_DEPLOYMENT_TEST=1' : 'MARVEL_HTTP_TEST=1',
     `APP_URL=http://127.0.0.1:${port}`, `SANCTUM_STATEFUL_DOMAINS=127.0.0.1:${port}`,
     'DB_CONNECTION=pgsql', `DB_HOST=${databaseHost}`, 'DB_PORT=5432', 'DB_DATABASE=identity_test', 'DB_USERNAME=marvel', 'DB_PASSWORD',
@@ -91,7 +91,7 @@ try {
       'MARVEL_PUBLIC_KEY=synthetic-public', 'MARVEL_PRIVATE_KEY=synthetic-private', 'MARVEL_DAILY_BUDGET=20',
     ] : []),
   ].flatMap(value => ['--env', value]);
-  const mounts = (nginx ? [] : ['app', 'routes', 'config', 'database', 'resources/views', 'public/build', 'tests/Support', 'bootstrap/app.php'])
+  const mounts = (nginx ? [] : ['app', 'routes', 'config', 'database', 'resources/catalog', 'resources/views', 'public/build', 'tests/Support', 'bootstrap/app.php'])
     .flatMap(path => ['--mount', `type=bind,source=${resolve(path)},target=/var/www/html/${path},readonly`]);
   const common = ['--network', network, ...settings, ...mounts, '--entrypoint', 'php', image];
   // This network and database were created above; no host database or volumes are mounted.

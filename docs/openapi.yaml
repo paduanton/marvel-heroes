@@ -90,11 +90,11 @@ paths:
     servers:
       - url: /
     get:
-      summary: Check cache access and credential configuration
-      description: Stateless probe of cache access and Marvel credential presence. Does not start a session, check PostgreSQL, call Marvel or validate the credentials with it.
+      summary: Check cache access and catalog configuration
+      description: Stateless probe of cache access and the configured catalog source. Does not start a session, check PostgreSQL or call an external provider.
       responses:
         '200':
-          description: Cache is accessible and Marvel credentials are configured.
+          description: Cache and the configured catalog are ready.
           content:
             application/json:
               schema:
@@ -103,7 +103,7 @@ paths:
                 properties:
                   status: { type: string, const: ready }
         '503':
-          description: Cache is unavailable or Marvel credentials are missing.
+          description: Cache or the configured catalog is unavailable.
           content:
             application/json:
               schema:
@@ -117,6 +117,7 @@ paths:
       description: Public, non-personalized read. Does not initialize or inspect a session or issue session cookies.
       parameters:
         - $ref: '#/components/parameters/SearchQuery'
+        - $ref: '#/components/parameters/CatalogSource'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PerPage'
       responses:
@@ -178,6 +179,60 @@ paths:
           $ref: '#/components/responses/UpstreamProblem'
         '503':
           $ref: '#/components/responses/CatalogUnavailableProblem'
+  /comics:
+    get:
+      summary: Search comic editions
+      description: Public catalog search. Omit source to use the configured catalog. Pin the returned source for subsequent pages.
+      parameters:
+        - name: query
+          in: query
+          schema: { type: string, minLength: 2, maxLength: 100 }
+          description: Case-insensitive title or series search.
+        - $ref: '#/components/parameters/CatalogSource'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200': { $ref: '#/components/responses/ComicCollectionResponse' }
+        '304': { description: Representation has not changed. }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        '429': { $ref: '#/components/responses/RateLimitProblem' }
+        '502': { $ref: '#/components/responses/UpstreamProblem' }
+        '503': { $ref: '#/components/responses/CatalogUnavailableProblem' }
+  /comics/{comicId}:
+    get:
+      summary: Get one comic edition
+      parameters:
+        - name: comicId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 9007199254740991 }
+      responses:
+        '200':
+          description: A comic edition.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComicResource'
+        '304': { description: Representation has not changed. }
+        '404': { $ref: '#/components/responses/NotFoundProblem' }
+        '429': { $ref: '#/components/responses/RateLimitProblem' }
+        '502': { $ref: '#/components/responses/UpstreamProblem' }
+        '503': { $ref: '#/components/responses/CatalogUnavailableProblem' }
+  /characters/{characterId}/comics:
+    get:
+      summary: List verified comic appearances of a character
+      parameters:
+        - $ref: '#/components/parameters/CharacterId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses:
+        '200': { $ref: '#/components/responses/ComicCollectionResponse' }
+        '304': { description: Representation has not changed. }
+        '404': { $ref: '#/components/responses/NotFoundProblem' }
+        '422': { $ref: '#/components/responses/ValidationProblem' }
+        '429': { $ref: '#/components/responses/RateLimitProblem' }
+        '502': { $ref: '#/components/responses/UpstreamProblem' }
+        '503': { $ref: '#/components/responses/CatalogUnavailableProblem' }
   /stories/{storyId}/comics:
     get:
       summary: List comics related to a story
@@ -211,6 +266,11 @@ components:
       name: marvel_heroes_session
       description: HttpOnly first-party session cookie, Secure in production, SameSite=Lax. State-changing requests also send the CSRF cookie value in X-XSRF-TOKEN. No token issuance endpoint exists.
   parameters:
+    CatalogSource:
+      name: source
+      in: query
+      schema: { type: string, enum: [local, live] }
+      description: Pin the source for discovery pagination. A live source must be configured to request live results.
     SearchQuery:
       name: query
       in: query
@@ -238,6 +298,9 @@ components:
       schema: { type: integer, minimum: 1, maximum: 9007199254740991 }
       description: Positive JavaScript-safe integer; invalid or oversized identifiers return 404 before upstream dispatch.
   responses:
+    ComicCollectionResponse:
+      description: A paginated comic collection.
+      content: { application/json: { schema: { $ref: '#/components/schemas/ComicCollection' } } }
     UnauthenticatedProblem:
       description: A valid session is required.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
@@ -260,10 +323,10 @@ components:
       description: Catalog resource not found.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     UpstreamProblem:
-      description: Marvel API could not be reached and no stale result is available.
+      description: The external catalog could not be reached and no usable result is available.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     CatalogUnavailableProblem:
-      description: The upstream budget is exhausted, refresh is in progress without stale data, or Redis is unavailable. Redis failures use code dependency-unavailable; the server never bypasses cache or budget to call Marvel.
+      description: The selected source is unavailable, the upstream budget is exhausted, refresh is in progress without stale data, or Redis is unavailable. Redis failures use code dependency-unavailable.
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
   schemas:
     Login:
@@ -299,11 +362,16 @@ components:
         page: { type: integer }
         per_page: { type: integer }
         total: { type: integer }
+        source: { $ref: '#/components/schemas/CatalogSource' }
         cache: { $ref: '#/components/schemas/CatalogCache' }
+    CatalogSource:
+      type: string
+      enum: [local, live]
+      description: Source of the response data, independent of its cache state.
     CatalogCache:
       type: object
       required: [state]
-      description: Server cache state at response creation. Fresh includes a successful upstream load; stale means fallback within the existing retention window. Browser caching can reuse this snapshot. This is not the publication or modification date of Marvel content.
+      description: Server cache state at response creation. Fresh includes data read from the local snapshot; stale means reuse of an older cached response. This is not the publication or modification date of the content.
       properties:
         state: { type: string, enum: [fresh, stale] }
     Character:
@@ -349,6 +417,18 @@ components:
           required: [cache]
           properties:
             cache: { $ref: '#/components/schemas/CatalogCache' }
+            source: { $ref: '#/components/schemas/CatalogSource' }
+    ComicResource:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: '#/components/schemas/Comic' }
+        meta:
+          type: object
+          required: [cache]
+          properties:
+            cache: { $ref: '#/components/schemas/CatalogCache' }
+            source: { $ref: '#/components/schemas/CatalogSource' }
     CharacterCollection:
       type: object
       required: [data, meta]

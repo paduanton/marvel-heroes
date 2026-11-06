@@ -16,7 +16,9 @@ legacy IDs must not resolve to unrelated records.
 and [Metron](https://github.com/Metron-Project/metron/blob/master/api/README.md)
 is the alternative. Live integration is pending authenticated capability checks
 and permission to publish normalized metadata, display covers and retain cache.
-The local adapter is ready for integration. No replacement live service is enabled.
+The running application uses the local source; no replacement live service is
+enabled. Keep the original Marvel transport only for isolated regression
+fixtures. The old warmup command is not part of normal setup.
 
 ## Curated snapshot v1
 

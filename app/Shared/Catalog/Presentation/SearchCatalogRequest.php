@@ -1,10 +1,11 @@
 <?php
 
-namespace App\Modules\Characters\Presentation\Requests;
+namespace App\Shared\Catalog\Presentation;
 
+use App\Modules\Characters\Presentation\Requests\PaginatesCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 
-final class ListCharactersRequest extends FormRequest
+final class SearchCatalogRequest extends FormRequest
 {
     use PaginatesCatalog;
 
@@ -18,6 +19,7 @@ final class ListCharactersRequest extends FormRequest
     {
         return array_merge($this->paginationRules(100), [
             'query' => ['nullable', 'string', 'min:2', 'max:100'],
+            'source' => ['sometimes', 'string', 'in:local,live'],
         ]);
     }
 

@@ -6,6 +6,8 @@ use App\Modules\Identity\Domain\EmailAddress;
 use App\Modules\Identity\Presentation\Policies\IdentityPolicy;
 use App\Shared\Cache\CachedMarvelCatalogGateway;
 use App\Shared\Cache\CatalogCacheMetadata;
+use App\Shared\Catalog\CatalogSourceUnavailableException;
+use App\Shared\Catalog\LocalCatalog;
 use App\Shared\Marvel\Contracts\MarvelCatalogGateway;
 use App\Shared\Marvel\MarvelHttpClient;
 use App\Shared\Marvel\MarvelPayloadNormalizer;
@@ -27,10 +29,20 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(MarvelPayloadNormalizer::class);
         $this->app->singleton(MarvelHttpClient::class);
         $this->app->scoped(CatalogCacheMetadata::class);
-        $this->app->scoped(MarvelCatalogGateway::class, fn ($app) => new CachedMarvelCatalogGateway(
-            $app->make(MarvelHttpClient::class),
-            $app->make(CatalogCacheMetadata::class),
-        ));
+        $this->app->scoped(LocalCatalog::class);
+        $this->app->scoped(MarvelCatalogGateway::class, function ($app): MarvelCatalogGateway {
+            if (config('catalog.provider') === 'local') {
+                return $app->make(LocalCatalog::class);
+            }
+            if (config('catalog.provider') === 'marvel-fixture' && $app->environment('testing', 'integration')) {
+                return new CachedMarvelCatalogGateway(
+                    $app->make(MarvelHttpClient::class),
+                    $app->make(CatalogCacheMetadata::class),
+                );
+            }
+
+            throw new CatalogSourceUnavailableException;
+        });
     }
 
     /**
