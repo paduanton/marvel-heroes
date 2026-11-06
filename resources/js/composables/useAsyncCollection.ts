@@ -1,5 +1,5 @@
 import { onScopeDispose, ref } from 'vue';
-import type { ApiCollection } from '@/types/catalog';
+import type { ApiCollection, CatalogSource } from '@/types/catalog';
 
 export function useAsyncCollection<T>() {
   const items = ref<T[]>([]);
@@ -7,6 +7,7 @@ export function useAsyncCollection<T>() {
   const loading = ref(false);
   const error = ref<string | null>(null);
   const stale = ref(false);
+  const source = ref<CatalogSource>();
   let controller: AbortController | undefined;
   let disposed = false;
 
@@ -15,6 +16,7 @@ export function useAsyncCollection<T>() {
     controller?.abort();
     loading.value = false;
     stale.value = false;
+    source.value = undefined;
   });
 
   function reset() {
@@ -25,6 +27,7 @@ export function useAsyncCollection<T>() {
     loading.value = false;
     error.value = null;
     stale.value = false;
+    source.value = undefined;
   }
 
   async function load(loader: (signal: AbortSignal) => Promise<ApiCollection<T>>) {
@@ -41,6 +44,7 @@ export function useAsyncCollection<T>() {
       items.value = result.data;
       total.value = result.meta.total;
       stale.value = result.meta.cache?.state === 'stale';
+      source.value = result.meta.source;
     } catch (exception) {
       if (!request.signal.aborted && (exception as { name?: string })?.name !== 'CanceledError') {
         error.value = exception instanceof Error ? exception.message : 'Unable to load catalog items.';
@@ -50,5 +54,5 @@ export function useAsyncCollection<T>() {
     }
   }
 
-  return { items, total, loading, error, stale, load, reset };
+  return { items, total, loading, error, stale, source, load, reset };
 }

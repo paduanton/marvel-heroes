@@ -5,6 +5,7 @@ import { catalogReturnQuery } from './catalogNavigation';
 import AsyncPanel from '@/components/AsyncPanel.vue';
 import CatalogImage from '@/components/CatalogImage.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
+import CharacterComicsPanel from '@/features/comics/CharacterComicsPanel.vue';
 import { displayDate, excerpt, initials } from '@/utils/formatters';
 import { focusActivatedRegion } from '@/utils/focus';
 import { useCharacterDetail } from './useCharacterDetail';
@@ -13,7 +14,7 @@ const props = defineProps<{ id: string }>();
 const route = useRoute();
 const characterRegion = ref<HTMLElement | null>(null);
 const storiesRegion = ref<HTMLElement | null>(null);
-const { character, characterStale, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
+const { character, characterStale, characterSource, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
   storiesPage, storiesPerPage, storiesTotal, firstStories, nextStories, previousStories, retryStories } = useCharacterDetail(() => props.id, useRouter());
 </script>
 
@@ -30,14 +31,17 @@ const { character, characterStale, stories, loading, error, retryCharacter, stor
           <p class="eyebrow">Character dossier</p>
           <h1>{{ character.name }}</h1>
           <p class="lead">{{ excerpt(character.description, 520) }}</p>
-          <p v-if="displayDate(character.modified_at)" class="metadata">Last updated by Marvel: {{ displayDate(character.modified_at) }}</p>
+          <p v-if="displayDate(character.modified_at)" class="metadata">Last updated: {{ displayDate(character.modified_at) }}</p>
+          <p v-if="characterSource === 'local'" class="metadata">Local catalog · <a href="https://www.comics.org/">Grand Comics Database</a> (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>)</p>
         </div>
       </section>
     </AsyncPanel>
     <button v-if="error && !loading" type="button" class="retry-button" @click="focusActivatedRegion($event, characterRegion); retryCharacter()">Try character again</button>
   </section>
 
-  <section ref="storiesRegion" class="related-section retry-region" tabindex="-1" aria-label="Related stories" :aria-busy="storiesLoading">
+  <CharacterComicsPanel v-if="character && characterSource" :character-id="id" />
+
+  <section v-if="characterSource !== 'live' || stories.length || storiesLoading || storiesError" ref="storiesRegion" class="related-section retry-region" tabindex="-1" aria-label="Related stories" :aria-busy="storiesLoading">
     <div class="section-heading"><div><p class="eyebrow">Related stories</p><h2>Stories to explore next</h2></div></div>
     <AsyncPanel :loading="storiesLoading" :error="storiesError" :stale="storiesStale" :empty="stories.length === 0" empty-message="No related stories are available for this character.">
       <div class="story-list">

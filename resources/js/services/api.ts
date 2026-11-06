@@ -8,6 +8,7 @@ const problemMessages = new Map<string, { status: number; message: string }>([
   ['upstream-unavailable', { status: 502, message: unavailable }],
   ['upstream-budget-exhausted', { status: 503, message: unavailable }],
   ['dependency-unavailable', { status: 503, message: unavailable }],
+  ['catalog-source-unavailable', { status: 503, message: 'The live catalog is unavailable. You can browse the local catalog.' }],
   ['cache-refresh-in-progress', { status: 503, message: 'Catalog is being refreshed. Please try again shortly.' }],
 ]);
 

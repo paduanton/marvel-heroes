@@ -8,7 +8,7 @@ import PaginationControls from '@/components/PaginationControls.vue';
 import { focusActivatedRegion } from '@/utils/focus';
 import { useCharacterCatalog } from './useCharacterCatalog';
 
-const { search, page, perPage, title, items, total, loading, error, stale, first, next, previous, retry, canRetry, submitSearch, clearSearch } = useCharacterCatalog(useRouter());
+const { search, page, perPage, title, items, total, loading, error, stale, source, requestedSource, startLocal, first, next, previous, retry, canRetry, submitSearch, clearSearch } = useCharacterCatalog(useRouter());
 const resultsRegion = ref<HTMLElement | null>(null);
 const searchInput = ref<HTMLInputElement | null>(null);
 const isComposing = ref(false);
@@ -47,6 +47,7 @@ function submit() {
   <section ref="resultsRegion" class="catalog-section retry-region" tabindex="-1" aria-label="Character results" :aria-busy="loading" aria-live="polite">
     <div class="section-heading">
       <p>{{ total }} characters in the archive</p>
+      <p v-if="source === 'local' && !loading && !error">Local catalog · <a href="https://www.comics.org/">Grand Comics Database</a> (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>)</p>
     </div>
     <AsyncPanel :loading="loading" :error="error" :stale="stale" :empty="items.length === 0" empty-message="No characters match this search yet.">
       <div class="character-grid">
@@ -54,6 +55,7 @@ function submit() {
       </div>
     </AsyncPanel>
     <button v-if="canRetry" type="button" class="retry-catalog" @click="focusActivatedRegion($event, resultsRegion); retry()">Try characters again</button>
+    <button v-if="canRetry && requestedSource === 'live'" type="button" class="retry-catalog" @click="focusActivatedRegion($event, resultsRegion); startLocal()">Browse local catalog</button>
     <PaginationControls v-if="!loading" :page="page" :per-page="perPage" :total="total" :focus-target="resultsRegion" @first="first" @previous="previous" @next="next" />
   </section>
 </template>

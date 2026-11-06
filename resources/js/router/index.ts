@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import CharacterCatalogPage from '@/features/characters/CharacterCatalogPage.vue';
 import CharacterDetailPage from '@/features/characters/CharacterDetailPage.vue';
+import ComicCatalogPage from '@/features/comics/ComicCatalogPage.vue';
+import ComicDetailPage from '@/features/comics/ComicDetailPage.vue';
 import StoryComicsPage from '@/features/comics/StoryComicsPage.vue';
 import AccountPage from '@/features/identity/AccountPage.vue';
 
@@ -12,6 +14,8 @@ export default createRouter({
     { path: '/register', name: 'register', component: AccountPage, props: { mode: 'register' }, meta: { title: 'Create account' } },
     { path: '/', name: 'characters', component: CharacterCatalogPage, meta: { title: 'Characters' } },
     { path: '/characters/:id', name: 'character-detail', component: CharacterDetailPage, props: true, meta: { title: 'Character details' } },
+    { path: '/comics', name: 'comics', component: ComicCatalogPage, meta: { title: 'Comics' } },
+    { path: '/comics/:id', name: 'comic-detail', component: ComicDetailPage, props: true, meta: { title: 'Comic details' } },
     { path: '/stories/:id/comics', name: 'story-comics', component: StoryComicsPage, props: true, meta: { title: 'Related comics' } },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],

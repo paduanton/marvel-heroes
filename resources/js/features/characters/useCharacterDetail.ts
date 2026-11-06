@@ -2,13 +2,14 @@ import { computed, onScopeDispose, ref, watch } from 'vue';
 import type { Router } from 'vue-router';
 import { useAsyncCollection } from '@/composables/useAsyncCollection';
 import { getCharacter, listStories } from '@/services/catalog';
-import type { Character, Story } from '@/types/catalog';
+import type { CatalogSource, Character, Story } from '@/types/catalog';
 import { catalogPage } from './catalogNavigation';
 
 export function useCharacterDetail(characterId: () => string, router?: Router) {
   const character = ref<Character | null>(null);
   const { items: stories, total: storiesTotal, loading: storiesLoading, error: storiesError, stale: storiesStale, load: loadStories, reset: resetStories } = useAsyncCollection<Story>();
   const characterStale = ref(false);
+  const characterSource = ref<CatalogSource>();
   const localStoriesPage = ref(1);
   const storiesPage = computed(() => router ? catalogPage(router.currentRoute.value.query.stories_page) : localStoriesPage.value);
   const storiesPerPage = 10;
@@ -22,6 +23,7 @@ export function useCharacterDetail(characterId: () => string, router?: Router) {
     controller?.abort();
     loading.value = false;
     characterStale.value = false;
+    characterSource.value = undefined;
   });
 
   async function load(id: string) {
@@ -31,11 +33,13 @@ export function useCharacterDetail(characterId: () => string, router?: Router) {
     loading.value = true;
     error.value = null;
     characterStale.value = false;
+    characterSource.value = undefined;
     try {
       const result = await getCharacter(id, request.signal);
       if (!request.signal.aborted) {
         character.value = result.data;
         characterStale.value = result.meta?.cache?.state === 'stale';
+        characterSource.value = result.meta?.source;
       }
     } catch (exception) {
       if (!request.signal.aborted) {
@@ -94,6 +98,6 @@ export function useCharacterDetail(characterId: () => string, router?: Router) {
   if (router) watch([characterId, storiesPage], ([id]) => {
     if (router.currentRoute.value.name === 'character-detail') void loadStoriesPage(id);
   }, { immediate: true });
-  return { character, characterStale, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
+  return { character, characterStale, characterSource, stories, loading, error, retryCharacter, storiesLoading, storiesError, storiesStale,
     storiesPage, storiesPerPage, storiesTotal, firstStories, nextStories, previousStories, retryStories };
 }
