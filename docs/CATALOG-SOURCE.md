@@ -20,6 +20,12 @@ The running application uses the local source; no replacement live service is
 enabled. Keep the original Marvel transport only for isolated regression
 fixtures. The old warmup command is not part of normal setup.
 
+After approval for live calls, configure `COMIC_VINE_API_KEY` in the ignored
+`.env` and run `node --env-file=.env tools/catalog/probe-comic-vine.mjs --live`.
+The probe makes at most eight requests, without retries or redirects, and
+reports only the stage, count and outcome. It tests a publisher-filter
+hypothesis, not exhaustive coverage, image availability or permission to publish.
+
 ## Curated snapshot v1
 
 [Grand Comics Database](https://www.comics.org/) contributed the bibliographic
