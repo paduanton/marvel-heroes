@@ -182,12 +182,12 @@ paths:
   /comics:
     get:
       summary: Search comic editions
-      description: Public catalog search. Omit source to use the configured catalog. Pin the returned source for subsequent pages.
+      description: Public catalog search. Omit source to use the configured catalog, with local fallback on the first page. Pin the returned source for subsequent pages.
       parameters:
         - name: query
           in: query
           schema: { type: string, minLength: 2, maxLength: 100 }
-          description: Case-insensitive title or series search.
+          description: Case-insensitive series search with Metron, or edition title search in the local snapshot.
         - $ref: '#/components/parameters/CatalogSource'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PerPage'
@@ -209,6 +209,8 @@ paths:
       responses:
         '200':
           description: A comic edition.
+          headers:
+            Link: { $ref: '#/components/headers/LiveCatalogAttribution' }
           content:
             application/json:
               schema:
@@ -221,8 +223,10 @@ paths:
   /characters/{characterId}/comics:
     get:
       summary: List verified comic appearances of a character
+      description: Live appearances require an exact, unambiguous character cross-reference. Pin the returned source for subsequent pages.
       parameters:
         - $ref: '#/components/parameters/CharacterId'
+        - $ref: '#/components/parameters/CatalogSource'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PerPage'
       responses:
@@ -259,6 +263,10 @@ paths:
         '503':
           $ref: '#/components/responses/CatalogUnavailableProblem'
 components:
+  headers:
+    LiveCatalogAttribution:
+      description: When the source is live, links to the metadata provider and the license for the adapted data.
+      schema: { type: string }
   securitySchemes:
     sessionCookie:
       type: apiKey
@@ -300,6 +308,8 @@ components:
   responses:
     ComicCollectionResponse:
       description: A paginated comic collection.
+      headers:
+        Link: { $ref: '#/components/headers/LiveCatalogAttribution' }
       content: { application/json: { schema: { $ref: '#/components/schemas/ComicCollection' } } }
     UnauthenticatedProblem:
       description: A valid session is required.

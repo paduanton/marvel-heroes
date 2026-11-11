@@ -2,8 +2,8 @@
 
 namespace App\Modules\Comics\Presentation\Controllers;
 
-use App\Modules\Characters\Presentation\Requests\ListRelatedCatalogRequest;
 use App\Modules\Comics\Application\BrowseComics;
+use App\Modules\Comics\Presentation\Requests\CharacterComicsRequest;
 use App\Modules\Comics\Presentation\Resources\ComicResource;
 use App\Shared\Catalog\Presentation\SearchCatalogRequest;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -23,9 +23,9 @@ final class ComicDiscoveryController
         return new ComicResource($action->detail($comicId) ?? throw new NotFoundHttpException('Comic not found.'));
     }
 
-    public function forCharacter(int $characterId, ListRelatedCatalogRequest $request, BrowseComics $action): AnonymousResourceCollection
+    public function forCharacter(int $characterId, CharacterComicsRequest $request, BrowseComics $action): AnonymousResourceCollection
     {
-        $page = $action->forCharacter($characterId, $request->page(), $request->perPage(20));
+        $page = $action->forCharacter($characterId, $request->page(), $request->perPage(20), $request->validated('source'));
 
         return ComicResource::collection($page->items)->additional(['meta' => $page->meta()]);
     }

@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(CatalogCacheMetadata::class);
         $this->app->scoped(LocalCatalog::class);
         $this->app->scoped(MarvelCatalogGateway::class, function ($app): MarvelCatalogGateway {
-            if (config('catalog.provider') === 'local') {
+            if (in_array(config('catalog.provider'), ['local', 'metron'], true)) {
                 return $app->make(LocalCatalog::class);
             }
             if (config('catalog.provider') === 'marvel-fixture' && $app->environment('testing', 'integration')) {

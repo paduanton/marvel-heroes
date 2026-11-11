@@ -7,6 +7,7 @@ use App\Shared\Catalog\CatalogSourceUnavailableException;
 use App\Shared\Marvel\Exceptions\MarvelBudgetExhaustedException;
 use App\Shared\Marvel\Exceptions\MarvelRefreshInProgressException;
 use App\Shared\Marvel\Exceptions\MarvelUnavailableException;
+use App\Shared\Metron\MetronUnavailable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\QueryException;
@@ -77,6 +78,15 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         $exceptions->render(function (MarvelUnavailableException $exception, Request $request) use ($problem) {
             return $request->is('api/*') ? $problem($request, 502, 'upstream-unavailable', 'The catalog source is temporarily unavailable.') : null;
+        });
+        $exceptions->render(function (MetronUnavailable $exception, Request $request) use ($problem) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return $exception->budgetExhausted
+                ? $problem($request, 503, 'upstream-budget-exhausted', 'Catalog data is temporarily unavailable.')
+                : $problem($request, 502, 'upstream-unavailable', 'The catalog source is temporarily unavailable.');
         });
         $exceptions->render(function (ValidationException $exception, Request $request) use ($problem) {
             return $request->is('api/*') ? $problem($request, 422, 'validation-failed', 'One or more request parameters are invalid.', ['errors' => $exception->errors()]) : null;

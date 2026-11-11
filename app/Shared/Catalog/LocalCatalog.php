@@ -125,6 +125,13 @@ final class LocalCatalog implements MarvelCatalogGateway
         return $this->page($this->issuesByCharacter[$characterId] ?? [], $offset, $limit);
     }
 
+    public function characterGcdId(int $characterId): int
+    {
+        $this->requireCharacter($characterId);
+
+        return $characterId - self::ID_BASE;
+    }
+
     private function requireCharacter(int $characterId): void
     {
         if (! isset($this->characters[$characterId])) {

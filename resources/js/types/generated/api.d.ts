@@ -466,12 +466,12 @@ export interface paths {
         };
         /**
          * Search comic editions
-         * @description Public catalog search. Omit source to use the configured catalog. Pin the returned source for subsequent pages.
+         * @description Public catalog search. Omit source to use the configured catalog, with local fallback on the first page. Pin the returned source for subsequent pages.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Case-insensitive title or series search. */
+                    /** @description Case-insensitive series search with Metron, or edition title search in the local snapshot. */
                     query?: string;
                     /** @description Pin the source for discovery pagination. A live source must be configured to request live results. */
                     source?: components["parameters"]["CatalogSource"];
@@ -529,6 +529,7 @@ export interface paths {
                 /** @description A comic edition. */
                 200: {
                     headers: {
+                        Link: components["headers"]["LiveCatalogAttribution"];
                         [name: string]: unknown;
                     };
                     content: {
@@ -563,10 +564,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List verified comic appearances of a character */
+        /**
+         * List verified comic appearances of a character
+         * @description Live appearances require an exact, unambiguous character cross-reference. Pin the returned source for subsequent pages.
+         */
         get: {
             parameters: {
                 query?: {
+                    /** @description Pin the source for discovery pagination. A live source must be configured to request live results. */
+                    source?: components["parameters"]["CatalogSource"];
                     /** @description Positive safe integer. With per_page capped at 100, offset arithmetic stays within PHP 64-bit integers. Invalid pagination returns 422 before upstream dispatch. */
                     page?: components["parameters"]["Page"];
                     per_page?: components["parameters"]["PerPage"];
@@ -775,6 +781,7 @@ export interface components {
         /** @description A paginated comic collection. */
         ComicCollectionResponse: {
             headers: {
+                Link: components["headers"]["LiveCatalogAttribution"];
                 [name: string]: unknown;
             };
             content: {
@@ -877,7 +884,10 @@ export interface components {
         StoryId: number;
     };
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description When the source is live, links to the metadata provider and the license for the adapted data. */
+        LiveCatalogAttribution: string;
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;

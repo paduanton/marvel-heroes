@@ -12,6 +12,7 @@
 */
 
 use App\Shared\Catalog\LocalCatalog;
+use App\Shared\Metron\MetronClient;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
 
@@ -22,7 +23,8 @@ Route::get('/ready', function () {
     try {
         Cache::store()->get('catalog:readiness');
         $ready = match (config('catalog.provider')) {
-            'local' => app(LocalCatalog::class)->issues('', 0, 1)['total'] > 0,
+            'local', 'metron' => app(LocalCatalog::class)->issues('', 0, 1)['total'] > 0
+                && (config('catalog.provider') === 'local' || MetronClient::configured()),
             'marvel-fixture' => app()->environment('testing', 'integration')
                 && filled(config('marvel.public_key')) && filled(config('marvel.private_key')),
             default => false,

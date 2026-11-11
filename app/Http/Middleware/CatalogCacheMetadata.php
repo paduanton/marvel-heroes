@@ -22,6 +22,9 @@ final class CatalogCacheMetadata
             if ($this->metadata->source() !== null) {
                 $body['meta']['source'] = $this->metadata->source();
             }
+            if ($this->metadata->source() === 'live' && config('catalog.provider') === 'metron') {
+                $response->headers->set('Link', '<https://metron.cloud/>; rel="via", <https://creativecommons.org/licenses/by-sa/4.0/>; rel="license"');
+            }
             $response->setData($body);
         }
 

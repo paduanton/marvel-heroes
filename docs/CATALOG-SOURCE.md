@@ -12,19 +12,36 @@ Sanctum identity independent of the provider. Search, detail and verified
 relationships must remain demonstrable without external credentials. Unknown
 legacy IDs must not resolve to unrelated records.
 
-[Comic Vine](https://comicvine.gamespot.com/api/) is the preferred live candidate
-and [Metron](https://github.com/Metron-Project/metron/blob/master/api/README.md)
-is the alternative. Live integration is pending authenticated capability checks
-and permission to publish normalized metadata, display covers and retain cache.
-The running application uses the local source; no replacement live service is
-enabled. Keep the original Marvel transport only for isolated regression
-fixtures. The old warmup command is not part of normal setup.
+## Optional live metadata
 
-After approval for live calls, configure `COMIC_VINE_API_KEY` in the ignored
-`.env` and run `node --env-file=.env tools/catalog/probe-comic-vine.mjs --live`.
-The probe makes at most eight requests, without retries or redirects, and
-reports only the stage, count and outcome. It tests a publisher-filter
-hypothesis, not exhaustive coverage, image availability or permission to publish.
+[Metron](https://metron.cloud/) replaces the original Marvel Comics API for
+live comic search and detail. Comic Vine was not selected because the evaluated
+search could not guarantee publisher filtering and exact totals together.
+Character discovery and verified story links continue to use the local snapshot.
+Live appearances are available only for characters with a unique exact Grand
+Comics Database cross-reference; otherwise the curated links remain available.
+The original Marvel transport remains only for isolated regression fixtures.
+
+The default is `CATALOG_PROVIDER=local`, with no credentials. To opt in, set
+`CATALOG_PROVIDER=metron` and inject `METRON_API_TOKEN` into PHP through the
+ignored local `.env` or the deployment secret manager. The token is only sent
+as a Bearer credential to the fixed HTTPS Metron origin; it is unrelated to
+Sanctum. Roll back by restoring `CATALOG_PROVIDER=local`, with no migration
+or cache flush. Live issue IDs do not silently redirect to local editions.
+
+Metron searches by series and filters by verified Marvel publisher ID. Redis
+holds normalized metadata, not upstream responses. Nonempty results are fresh
+for 30 days and eligible for stale fallback for up to 180 days from refresh;
+empty lookups are kept for 15 minutes. The default application budget is 15
+requests per rolling minute and 4,000 per rolling day, shared across resources.
+Metron's [account limits and cooldown headers](https://github.com/Metron-Project/metron/blob/master/api/RATELIMIT.md)
+still apply. Start a new search with `source=local` to bypass live lookups.
+
+Metron metadata is adapted under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/);
+this license applies to the adapted metadata, not application code.
+The [provider's reuse guidance](https://metron-project.github.io/blog/commercial-api-use)
+excludes covers. The adapter does not expose or cache cover URLs or third-party
+descriptions. The vitrine uses its own illustrative covers instead.
 
 ## Curated snapshot v1
 
