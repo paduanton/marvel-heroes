@@ -59,6 +59,63 @@ test('restarts at page one of the local catalog when the pinned live source fail
   await expect(page.getByRole('link', { name: edition.title })).toBeVisible();
 });
 
+test('credits live comic metadata on the list and detail without showing upstream covers', async ({ page }) => {
+  const liveEdition = { ...edition, id: 2000000000021, title: 'Amazing Spider-Man (2024) #5' };
+  await page.route('**/api/v1/comics**', async route => {
+    const url = new URL(route.request().url());
+    const meta = { source: 'live', cache: { state: 'stale' } };
+    if (url.pathname.endsWith(String(liveEdition.id))) {
+      await route.fulfill({ json: { data: liveEdition, meta } });
+    } else {
+      await route.fulfill({ json: { data: [liveEdition], meta: { ...meta, page: 1, per_page: 20, total: 1 } } });
+    }
+  });
+
+  await page.goto('/comics');
+  await expect(page.getByRole('link', { name: 'Metron', exact: true })).toHaveAttribute('href', 'https://metron.cloud/');
+  await expect(page.getByText('Illustrative cover')).toBeVisible();
+  await page.getByRole('link', { name: liveEdition.title }).click();
+  await expect(page.getByRole('heading', { name: liveEdition.title })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Metron', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'CC BY-SA 4.0', exact: true })).toBeVisible();
+  await expect(page.getByText('Illustrative cover')).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test('pins the related comic source and lets the visitor restart locally after an outage', async ({ page }) => {
+  const character = { id: 3000000006122, name: 'Spider-Man', image_url: null, description: null, modified_at: null };
+  const meta = { source: 'local', cache: { state: 'fresh' } };
+  await page.route('**/api/v1/**', async route => {
+    const url = new URL(route.request().url());
+    const source = url.searchParams.get('source');
+    if (url.pathname.endsWith(String(character.id))) {
+      await route.fulfill({ json: { data: character, meta } });
+    } else if (url.pathname.endsWith('/stories')) {
+      await route.fulfill({ json: { data: [], meta: { ...meta, page: 1, per_page: 10, total: 0 } } });
+    } else if (url.pathname.endsWith('/comics') && source === 'live') {
+      await route.fulfill({ status: 502, contentType: 'application/problem+json', json: { code: 'upstream-unavailable' } });
+    } else if (url.pathname.endsWith('/comics')) {
+      const local = source === 'local';
+      const data = local ? [edition] : [{ ...edition, id: 2000000000021, title: 'Live edition' }];
+      await route.fulfill({ json: { data, meta: { ...meta, source: local ? 'local' : 'live', page: 1, per_page: 20, total: local ? 1 : 21 } } });
+    } else {
+      await route.fallback();
+    }
+  });
+
+  await page.goto(`/characters/${character.id}?query=spider`);
+  const related = page.getByRole('region', { name: 'Related comic editions' });
+  await expect(related.getByRole('link', { name: 'Metron', exact: true })).toBeVisible();
+  await related.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page).toHaveURL(/character_comics_source=live/);
+  await related.getByRole('button', { name: 'Browse local catalog' }).click();
+  await expect(related.getByRole('link', { name: edition.title })).toBeVisible();
+  await expect(related.getByRole('link', { name: 'Grand Comics Database' })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('character_comics_page')).toBeNull();
+  expect(new URL(page.url()).searchParams.get('character_comics_source')).toBe('local');
+  expect(new URL(page.url()).searchParams.get('query')).toBe('spider');
+});
+
 test('opens a comic appearance directly from the character and returns to that character', async ({ page }) => {
   const character = { id: 3000000006122, name: 'Spider-Man', image_url: null, description: null, modified_at: null };
   const meta = { source: 'local', cache: { state: 'fresh' } };

@@ -6,6 +6,7 @@ import AsyncPanel from '@/components/AsyncPanel.vue';
 import ComicEditionCard from '@/components/ComicEditionCard.vue';
 import PaginationControls from '@/components/PaginationControls.vue';
 import { useCatalogSearch } from '@/composables/useCatalogSearch';
+import ComicSourceAttribution from './ComicSourceAttribution.vue';
 import { searchComics } from '@/services/catalog';
 import { focusActivatedRegion } from '@/utils/focus';
 
@@ -30,7 +31,7 @@ function clear(event?: KeyboardEvent) {
     <h1>Marvel comics</h1>
     <form class="edition-search" role="search" aria-label="Comic search" @submit.prevent="!composing && submitSearch()">
       <label class="sr-only" for="comic-search">Search comics</label>
-      <input id="comic-search" ref="input" v-model="search" type="search" placeholder="Search by title or series" autocomplete="off" @keydown.esc="clear" @compositionstart="composing = true" @compositionend="composing = false" />
+      <input id="comic-search" ref="input" v-model="search" type="search" :placeholder="source === 'local' ? 'Search by title or series' : 'Search by series'" autocomplete="off" @keydown.esc="clear" @compositionstart="composing = true" @compositionend="composing = false" />
       <button v-if="search" type="button" title="Clear search" aria-label="Clear search" @click="clear()"><X :size="20" aria-hidden="true" /></button>
       <button type="submit" title="Apply search" aria-label="Apply search"><Search :size="20" aria-hidden="true" /></button>
     </form>
@@ -48,7 +49,7 @@ function clear(event?: KeyboardEvent) {
       <button v-if="requestedSource !== 'local'" type="button" @click="focusActivatedRegion($event, results); startLocal()">Browse local catalog</button>
     </div>
     <PaginationControls v-if="!loading && !error" :page="page" :per-page="perPage" :total="total" :focus-target="results" @first="first" @previous="previous" @next="next" />
-    <p v-if="source === 'local' && !loading && !error" class="edition-attribution">Metadata adapted from <a href="https://www.comics.org/">Grand Comics Database</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a></p>
+    <ComicSourceAttribution v-if="source && !loading && !error" :source="source" />
   </section>
 </template>
 
@@ -61,8 +62,7 @@ function clear(event?: KeyboardEvent) {
 .edition-search button { display: grid; width: 44px; min-height: 44px; flex: 0 0 44px; place-items: center; padding: 0; border: 0; color: #334155; background: transparent; }
 .edition-search button:hover { background: #e2e8f0; }
 .edition-search :focus-visible { outline: 3px solid #b91c1c; outline-offset: -3px; }
-.edition-count, .edition-attribution { margin: 16px 0; color: #475569; font-size: .875rem; }
-.edition-attribution a { text-decoration: underline; }
+.edition-count { margin: 16px 0; color: #475569; font-size: .875rem; }
 .edition-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 136px), 1fr)); gap: 16px; }
 .edition-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 .edition-actions button { min-height: 44px; padding: 8px 12px; border: 1px solid #94a3b8; background: #fff; color: #111827; }

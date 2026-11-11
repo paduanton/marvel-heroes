@@ -75,8 +75,8 @@ export function getComic(id: string, signal?: AbortSignal) {
   return readComicCatalog<ComicResource>(`/comics/${encodeURIComponent(id)}`, {}, signal);
 }
 
-export function listCharacterComics(id: string, params: { page: number; perPage: number }, signal?: AbortSignal) {
+export function listCharacterComics(id: string, params: Omit<SearchParams, 'query'>, signal?: AbortSignal) {
   return readComicCatalog<ComicCollection>(`/characters/${encodeURIComponent(id)}/comics`, {
-    page: params.page, per_page: params.perPage,
+    page: params.page, per_page: params.perPage, source: params.source,
   }, signal);
 }

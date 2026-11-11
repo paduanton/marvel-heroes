@@ -8,6 +8,7 @@ import { getComic } from '@/services/catalog';
 import type { ComicResource } from '@/types/catalog';
 import { displayPublicationDate } from '@/utils/formatters';
 import { focusActivatedRegion } from '@/utils/focus';
+import ComicSourceAttribution from './ComicSourceAttribution.vue';
 
 const props = defineProps<{ id: string }>();
 const route = useRoute();
@@ -50,7 +51,7 @@ watch([() => props.id, retry], async ([id], _, onCleanup) => {
           <p v-if="result.meta.source === 'local'">Local catalog</p>
           <p v-if="publicationDate">On sale: <time :datetime="result.data.on_sale_at ?? undefined">{{ publicationDate }}</time></p>
           <p v-if="result.data.description" class="edition-description">{{ result.data.description }}</p>
-          <p v-if="result.meta.source === 'local'" class="edition-attribution">Metadata adapted from <a href="https://www.comics.org/">Grand Comics Database</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a></p>
+          <ComicSourceAttribution v-if="result.meta.source" :source="result.meta.source" />
         </div>
       </div>
     </AsyncPanel>
@@ -62,8 +63,6 @@ watch([() => props.id, retry], async ([id], _, onCleanup) => {
 .edition-detail { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 28px; align-items: start; }
 .edition-title { font-size: 2rem; line-height: 1.15; overflow-wrap: anywhere; }
 .edition-description { max-width: 62ch; white-space: pre-line; overflow-wrap: anywhere; }
-.edition-attribution { color: #475569; font-size: .875rem; }
-.edition-attribution a { text-decoration: underline; }
 .edition-retry { min-height: 44px; margin-top: 16px; padding: 8px 12px; border: 1px solid #94a3b8; background: #fff; color: #111827; }
 @media (max-width: 640px) { .edition-detail { grid-template-columns: 1fr; gap: 20px; } .edition-detail :deep(.edition-cover) { width: min(100%, 240px); } }
 </style>
